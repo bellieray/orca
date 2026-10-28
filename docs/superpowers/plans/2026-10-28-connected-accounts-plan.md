@@ -77,6 +77,7 @@
 ### Task 1: Binding data model and persistence
 
 **Files:**
+
 - Create: `src/shared/connected-accounts/connected-accounts-types.ts`
 - Create: `src/shared/connected-accounts/connected-accounts-normalize.ts`
 - Test: `src/shared/connected-accounts/connected-accounts-normalize.test.ts`
@@ -88,21 +89,30 @@
 - Test: extend `src/main/persistence/tracking-repos/` existing repo-update/hydration tests (the ones that cover `ghAccount`)
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
   export type ConnectedAccountsGitAuthor = { name: string; email: string }
   export type ConnectedAccountsExtraEnvEntry = { key: string; value: string }
   export type RepoConnectedAccounts = {
-    claudeAccountId?: string          // ClaudeManagedAccount.id
+    claudeAccountId?: string // ClaudeManagedAccount.id
     firebaseEmail?: string
-    admobProfileId?: string           // ConnectedAccountsAdmobProfile.id
-    gitAuthor?: ConnectedAccountsGitAuthor   // used only when Repo.ghAccount is set
+    admobProfileId?: string // ConnectedAccountsAdmobProfile.id
+    gitAuthor?: ConnectedAccountsGitAuthor // used only when Repo.ghAccount is set
     extraEnv?: ConnectedAccountsExtraEnvEntry[]
   }
-  export type ConnectedAccountsAdmobProfile = { id: string; name: string; credentialsDir: string; publisherCode: string }
-  export function normalizeRepoConnectedAccounts(value: unknown): RepoConnectedAccounts | null   // null = empty/malformed
-  export function normalizeConnectedAccountsAdmobProfiles(value: unknown): ConnectedAccountsAdmobProfile[]
-  export function isValidConnectedAccountsEnvKey(key: string): boolean  // /^[A-Za-z_][A-Za-z0-9_]*$/
+  export type ConnectedAccountsAdmobProfile = {
+    id: string
+    name: string
+    credentialsDir: string
+    publisherCode: string
+  }
+  export function normalizeRepoConnectedAccounts(value: unknown): RepoConnectedAccounts | null // null = empty/malformed
+  export function normalizeConnectedAccountsAdmobProfiles(
+    value: unknown
+  ): ConnectedAccountsAdmobProfile[]
+  export function isValidConnectedAccountsEnvKey(key: string): boolean // /^[A-Za-z_][A-Za-z0-9_]*$/
   export function isReservedConnectedAccountsEnvKey(key: string, platform: NodeJS.Platform): boolean
   ```
   - `Repo.connectedAccounts?: RepoConnectedAccounts`
@@ -127,17 +137,30 @@
 ### Task 2: Pure env resolution for AdMob and extra env
 
 **Files:**
+
 - Create: `src/main/connected-accounts/connected-accounts-static-env.ts`
 - Test: `src/main/connected-accounts/connected-accounts-static-env.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 types, `isReservedConnectedAccountsEnvKey`.
 - Produces:
+
   ```ts
-  export type ConnectedAccountsUnresolved = { tool: 'claude' | 'github' | 'git' | 'firebase' | 'admob'; account: string; fixCommand?: string; reason: string }
-  export function resolveAdmobProfileEnv(profileId: string, profiles: ConnectedAccountsAdmobProfile[]):
-    { env: Record<string, string> } | { unresolved: ConnectedAccountsUnresolved }
-  export function resolveExtraEnv(entries: ConnectedAccountsExtraEnvEntry[] | undefined, platform: NodeJS.Platform): Record<string, string>
+  export type ConnectedAccountsUnresolved = {
+    tool: 'claude' | 'github' | 'git' | 'firebase' | 'admob'
+    account: string
+    fixCommand?: string
+    reason: string
+  }
+  export function resolveAdmobProfileEnv(
+    profileId: string,
+    profiles: ConnectedAccountsAdmobProfile[]
+  ): { env: Record<string, string> } | { unresolved: ConnectedAccountsUnresolved }
+  export function resolveExtraEnv(
+    entries: ConnectedAccountsExtraEnvEntry[] | undefined,
+    platform: NodeJS.Platform
+  ): Record<string, string>
   ```
 
 - [ ] **Step 1: Failing tests:**
@@ -152,6 +175,7 @@
 ### Task 3: Per-project Claude routing
 
 **Files:**
+
 - Modify: `src/main/claude-accounts/claude-profile-router.ts` (`launchEnv` 265, `terminalEnv` 275, `prepareLaunch` 311 region, `preparation`)
 - Modify: `src/main/claude-accounts/runtime-auth-service.ts:49` (`prepareForClaudeLaunch`)
 - Modify: the `PrepareClaudeAuth` type (grep `type PrepareClaudeAuth`) and its implementers `src/main/orcad/orcad-account-services.ts:78`, `src/main/runtime/runtime-account-controller.ts:85`, `src/main/window/attach-main-window-services.ts:57`
@@ -159,8 +183,10 @@
 - Test: `src/main/claude-accounts/claude-profile-router.test.ts` (extend)
 
 **Interfaces:**
+
 - Consumes: `RepoConnectedAccounts.claudeAccountId`.
 - Produces:
+
   ```ts
   export type ClaudeRepoAccountOverride = { repoId: string; accountId: string }
   // ClaudeProfileRouter
@@ -195,20 +221,35 @@
 ### Task 4: GitHub token, git credential and author env (pure builder)
 
 **Files:**
+
 - Create: `src/main/connected-accounts/connected-accounts-git-env.ts`
 - Test: `src/main/connected-accounts/connected-accounts-git-env.test.ts`
 - Test: extend `src/main/daemon/pty-subprocess/spawn-environment.test.ts` (or the nearest existing test of `createDaemonPtyEnvironment`)
 
 **Interfaces:**
+
 - Consumes: `GhAccountBinding`, `ghTokenEnvVarForHost` (`src/shared/github/account-binding.ts`), `appendGitConfigEnv` (`src/shared/git-credential-prompt-env.ts:61`), `resolveGhAccountToken` and `createGhBoundAccountUnavailableError` (`src/main/github/gh-account-token.ts:110`), `stripAmbientGhTokenEnv` (`:197`).
 - Produces:
+
   ```ts
   export const CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED = 'orca-connected-accounts-unresolved'
-  export function buildBoundGitEnvPatch(args: { binding: GhAccountBinding; token: string; author?: ConnectedAccountsGitAuthor; baseEnv: Record<string,string> }): Record<string,string>
-  export function buildBlockedGhEnvPatch(binding: GhAccountBinding): Record<string,string>
-  export async function resolveGitSupportsConfigEnv(): Promise<boolean>   // cached `git --version` >= 2.31 via existing git command resolution
-  export async function resolveGhSpawnEnv(args: { binding: GhAccountBinding; author?: ConnectedAccountsGitAuthor; cwd: string; baseEnv: Record<string,string> }):
-    Promise<{ env: Record<string,string> } | { env: Record<string,string>; unresolved: ConnectedAccountsUnresolved }>
+  export function buildBoundGitEnvPatch(args: {
+    binding: GhAccountBinding
+    token: string
+    author?: ConnectedAccountsGitAuthor
+    baseEnv: Record<string, string>
+  }): Record<string, string>
+  export function buildBlockedGhEnvPatch(binding: GhAccountBinding): Record<string, string>
+  export async function resolveGitSupportsConfigEnv(): Promise<boolean> // cached `git --version` >= 2.31 via existing git command resolution
+  export async function resolveGhSpawnEnv(args: {
+    binding: GhAccountBinding
+    author?: ConnectedAccountsGitAuthor
+    cwd: string
+    baseEnv: Record<string, string>
+  }): Promise<
+    | { env: Record<string, string> }
+    | { env: Record<string, string>; unresolved: ConnectedAccountsUnresolved }
+  >
   ```
   - `buildBoundGitEnvPatch` sets `[ghTokenEnvVarForHost(host)]: token`, `GH_HOST: host`, `GH_PROMPT_DISABLED: '1'`.
   - It appends the git config entries `credential.https://<host>.helper` = `''` (reset) and then `credential.https://<host>.helper` = `!gh auth git-credential`. `gh` honours `GH_TOKEN`/`GH_ENTERPRISE_TOKEN`, so no askpass script is needed.
@@ -242,18 +283,24 @@
 ### Task 5: Firebase account store (list + per-directory bind)
 
 **Files:**
+
 - Create: `src/main/connected-accounts/firebase-tools-account-store.ts`
 - Test: `src/main/connected-accounts/firebase-tools-account-store.test.ts`
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
-  export function firebaseToolsConfigstorePath(env: NodeJS.ProcessEnv, home: string): string   // join(env.XDG_CONFIG_HOME || join(home,'.config'), 'configstore','firebase-tools.json')
-  export function listFirebaseToolsAccountEmails(path: string): string[]   // user.email + additionalAccounts[].user.email, deduped; [] when the file is missing
-  export function findFirebaseProjectRoot(dir: string): string | null      // same walk-up as firebase-tools detectProjectRoot
-  export function ensureFirebaseActiveAccount(args: { configstorePath: string; worktreePath: string; email: string }):
-    { ok: true; projectRoot: string } | { ok: false; unresolved: ConnectedAccountsUnresolved }
-  export function writeConnectedAccountsFirebaseJson(worktreePath: string): Promise<void>   // writes '{}\n' only if firebase.json is absent
+  export function firebaseToolsConfigstorePath(env: NodeJS.ProcessEnv, home: string): string // join(env.XDG_CONFIG_HOME || join(home,'.config'), 'configstore','firebase-tools.json')
+  export function listFirebaseToolsAccountEmails(path: string): string[] // user.email + additionalAccounts[].user.email, deduped; [] when the file is missing
+  export function findFirebaseProjectRoot(dir: string): string | null // same walk-up as firebase-tools detectProjectRoot
+  export function ensureFirebaseActiveAccount(args: {
+    configstorePath: string
+    worktreePath: string
+    email: string
+  }): { ok: true; projectRoot: string } | { ok: false; unresolved: ConnectedAccountsUnresolved }
+  export function writeConnectedAccountsFirebaseJson(worktreePath: string): Promise<void> // writes '{}\n' only if firebase.json is absent
   ```
   - `ensureFirebaseActiveAccount` behaviour:
     - It fails when the email is not in `listFirebaseToolsAccountEmails`. Fix: `npx -y firebase-tools@latest login:add`.
@@ -277,6 +324,7 @@
 ### Task 6: Spawn integration (agents + terminals, fail loud)
 
 **Files:**
+
 - Create: `src/main/connected-accounts/connected-accounts-spawn-env.ts`
 - Test: `src/main/connected-accounts/connected-accounts-spawn-env.test.ts`
 - Modify: `src/main/ipc/pty/ipc/spawn-preflight.ts:103-107`, `src/main/ipc/pty/runtime/spawn-preflight.ts:88-92`
@@ -286,24 +334,39 @@
 - Test: extend `src/main/ipc/pty/pty-spawn-env-terminal-basics.test.ts` (the existing spawn-env harness)
 
 **Interfaces:**
+
 - Consumes: Tasks 2–5, `getRepoIdFromWorktreeId` (`src/shared/worktree/id.ts:27`), `isFolderRepo`, the repo `executionHostId`/`connectionId`, `claudeProfileMissing` pattern (`claude-profile-launch-errors.ts`).
 - Produces:
+
   ```ts
   export type ConnectedAccountsSpawnEnv = {
-    env: Record<string, string>           // patch merged after withClaudeProfileTerminalEnv; extra env merged last
+    env: Record<string, string> // patch merged after withClaudeProfileTerminalEnv; extra env merged last
     claudeOverride?: ClaudeRepoAccountOverride
     unresolved: ConnectedAccountsUnresolved[]
-    fingerprint: string | null            // sha256 of non-secret binding values only; null when unbound
+    fingerprint: string | null // sha256 of non-secret binding values only; null when unbound
   }
   export async function resolveConnectedAccountsSpawnEnv(args: {
-    repo: Repo | undefined; worktreePath: string | undefined; settings: GlobalSettings; baseEnv: Record<string,string>; platform: NodeJS.Platform
+    repo: Repo | undefined
+    worktreePath: string | undefined
+    settings: GlobalSettings
+    baseEnv: Record<string, string>
+    platform: NodeJS.Platform
   }): Promise<ConnectedAccountsSpawnEnv>
   export function connectedAccountsFingerprint(repo: Repo, settings: GlobalSettings): string | null
-  export function formatConnectedAccountsLaunchError(unresolved: ConnectedAccountsUnresolved[]): Error & { code: 'connected_accounts_unresolved' }
+  export function formatConnectedAccountsLaunchError(
+    unresolved: ConnectedAccountsUnresolved[]
+  ): Error & { code: 'connected_accounts_unresolved' }
   // pane registry
-  export function recordConnectedAccountsPane(ptyId: string, repoId: string, fingerprint: string | null): void
+  export function recordConnectedAccountsPane(
+    ptyId: string,
+    repoId: string,
+    fingerprint: string | null
+  ): void
   export function forgetConnectedAccountsPane(ptyId: string): void
-  export function countStaleConnectedAccountsPanes(repoId: string, currentFingerprint: string | null): number
+  export function countStaleConnectedAccountsPanes(
+    repoId: string,
+    currentFingerprint: string | null
+  ): number
   ```
   - The resolver returns `{env:{}, unresolved:[], fingerprint:null}` for: no repo, a folder repo, a non-local execution host, and a WSL runtime. WSL is blocked earlier in the UI (Task 9); at spawn it stays default.
   - Agent launch = `ctx.isClaudeLaunch || launchAgent !== undefined`, and not a pre-adopted/restored pane (`ctx.preAdoptedStablePane` or a caller-supplied `sessionId` reattach).
@@ -331,12 +394,14 @@
 ### Task 7: Orca's own git calls use the bound account
 
 **Files:**
+
 - Modify: `src/main/git/git-runtime-options.ts` (add `env?: NodeJS.ProcessEnv` to `GitRuntimeOptions`; `gitOptionsForWorktree` forwards it)
 - Modify: `src/main/ipc/local-worktree-runtime-options.ts` (`getLocalGitOptionsForRegisteredWorktree` adds the env from `resolveGhSpawnEnv` for the matched repo)
 - Modify: `src/main/git/source-control/commit-changes.ts` (pass the author env)
 - Test: `src/main/ipc/local-worktree-runtime-options.test.ts` (create if absent) and the existing `remote` tests
 
 **Interfaces:**
+
 - Consumes: `resolveGhSpawnEnv` (Task 4), `getLocalRepoForRegisteredWorktree`.
 - Produces: `getLocalGitOptionsForRegisteredWorktree(store, worktreePath, resolvedPath)` becomes **async** and returns `GitRuntimeOptions & { env?: NodeJS.ProcessEnv }`. Update its callers in `src/main/ipc/filesystem/git-remote/*.ts`.
   - When the binding is unresolvable, it throws `formatConnectedAccountsLaunchError` (Orca's own push must fail loudly too).
@@ -353,11 +418,13 @@
 ### Task 8: IPC and preload for the settings section
 
 **Files:**
+
 - Create: `src/main/ipc/connected-accounts.ts` (registered next to `registerClaudeAccountHandlers`)
 - Create: `src/preload/api/connected-accounts-bridge.ts`; modify `src/preload/api-types.ts`, `src/preload/index.ts`
 - Test: `src/main/ipc/connected-accounts.test.ts`
 
 **Interfaces:**
+
 - Produces, as IPC channels and the `window.api.connectedAccounts.*` bridge:
   - `connectedAccounts:listFirebaseAccounts` → `string[]` (emails only).
   - `connectedAccounts:bindFirebaseProject({repoId})` → `{ wrote: boolean }`. Calls `writeConnectedAccountsFirebaseJson(repo.path)`. Rejected for folder/remote repos.
@@ -375,6 +442,7 @@
 ### Task 9: Settings section, menu item, sidebar key icon
 
 **Files:**
+
 - Create: `src/renderer/src/components/settings/repository/connected-accounts/RepositoryConnectedAccountsSection.tsx`
 - Create: `src/renderer/src/components/settings/repository/connected-accounts/ConnectedAccountsAdmobProfilesEditor.tsx`
 - Create: `src/renderer/src/components/settings/repository/connected-accounts/ConnectedAccountsExtraEnvEditor.tsx`
@@ -387,10 +455,12 @@
 - Modify: `src/renderer/src/components/sidebar/worktree-list/rows/SectionHeader.tsx:338` (render the indicator for repo headers)
 
 **Interfaces:**
+
 - Consumes: Task 8 bridge; `settings.claudeManagedAccounts`; `updateRepo(repoId, {connectedAccounts, ghAccount})`; `updateSettings({connectedAccountsAdmobProfiles})`; `OnboardingInlineCommandTerminal` (`src/renderer/src/components/onboarding/OnboardingInlineCommandTerminal.tsx`) for "Add account"; `handleRunningClaudeSessionsAfterSwitch` is **not** reused (it is tied to the global selection).
 - Produces:
+
   ```ts
-  export function connectedAccountsSummary(repo: Repo, settings: GlobalSettings): string[]   // e.g. ['Claude: me@y.com','GitHub: me@github.com', ...]; [] when unbound
+  export function connectedAccountsSummary(repo: Repo, settings: GlobalSettings): string[] // e.g. ['Claude: me@y.com','GitHub: me@github.com', ...]; [] when unbound
   ```
   - It lives in `src/renderer/src/components/settings/repository/connected-accounts/connected-accounts-summary.ts` and has a unit test.
 
@@ -425,6 +495,7 @@
 ### Task 10: i18n, real-launch proof, final gate
 
 **Files:**
+
 - Modify: `src/renderer/src/i18n/locales/en.json` (generated). The other locales fall back via i18next; no hand translation is required.
 
 - [ ] **Step 1: Run** `pnpm sync:localization-catalog`, then `pnpm verify:localization-catalogs`.

@@ -83,10 +83,12 @@ describe('connected accounts at spawn', () => {
   function recordingStore(repo: Repo) {
     const calls: unknown[] = []
     const store = new Proxy(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       { getRepo: (id: string) => (id === repo.id ? repo : undefined) } as Record<string, unknown>,
       {
         get(target, key) {
           if (key in target) {
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
             return target[key as string]
           }
           if (key === 'then' || typeof key === 'symbol') {
@@ -106,14 +108,18 @@ describe('connected accounts at spawn', () => {
     const { store, calls } = recordingStore(repo)
     handlers.clear()
     registerPtyHandlers(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       mainWindow as never,
       undefined,
       undefined,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       (() => ({ claudeManagedAccounts: [], connectedAccountsAdmobProfiles: [] })) as never,
       undefined,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       store as never
     )
     spawnMock.mockClear()
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
     const result = (await handlers.get('pty:spawn')!(null, {
       cols: 80,
       rows: 24,
@@ -152,6 +158,7 @@ describe('connected accounts at spawn', () => {
     try {
       const { result } = await spawnBound(boundRepo())
       expect(String(result.connectedAccountsWarning)).toContain('me@github.com')
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       const env = spawnMock.mock.calls.at(-1)![2].env as Record<string, string>
       expect(env.GH_TOKEN).toBe(CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED)
       expect(Object.values(env)).not.toContain('ambient-token')
@@ -167,6 +174,7 @@ describe('connected accounts at spawn', () => {
   it('bound terminal gets the per-repo Claude pointer', async () => {
     connectedAccountsGhMock.mockResolvedValue({ env: { GH_TOKEN: ACCOUNT_TOKEN } })
     const overrides: unknown[] = []
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
     installClaudeProfileRouter({
       terminalEnv: (_target: unknown, override?: { repoId: string }) => {
         overrides.push(override)
@@ -180,6 +188,7 @@ describe('connected accounts at spawn', () => {
     } as never)
     try {
       await spawnBound(boundRepo({ claudeAccountId: 'claude-1' }))
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
       const env = spawnMock.mock.calls.at(-1)![2].env as Record<string, string>
       expect(env[CLAUDE_PROFILE_POINTER_ENV]).toMatch(/by-repo[\\/][0-9a-f]{16}$/)
       expect(overrides).toEqual([{ repoId: 'repo-ca', accountId: 'claude-1' }])
@@ -191,6 +200,7 @@ describe('connected accounts at spawn', () => {
   it('spawn env with GH_TOKEN is not persisted', async () => {
     connectedAccountsGhMock.mockResolvedValue({ env: { GH_TOKEN: ACCOUNT_TOKEN } })
     const { result, calls } = await spawnBound(boundRepo())
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles implement only the members the spawn path reads.
     const env = spawnMock.mock.calls.at(-1)![2].env as Record<string, string>
     expect(env.GH_TOKEN).toBe(ACCOUNT_TOKEN)
     expect(result.connectedAccountsWarning).toBeUndefined()

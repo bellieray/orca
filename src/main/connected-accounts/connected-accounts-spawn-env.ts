@@ -108,11 +108,9 @@ export function formatConnectedAccountsWarning(unresolved: ConnectedAccountsUnre
 export function formatConnectedAccountsLaunchError(
   unresolved: ConnectedAccountsUnresolved[]
 ): Error & { code: 'connected_accounts_unresolved' } {
-  const error = new Error(formatConnectedAccountsWarning(unresolved)) as Error & {
-    code: 'connected_accounts_unresolved'
-  }
-  error.code = 'connected_accounts_unresolved'
-  return error
+  return Object.assign(new Error(formatConnectedAccountsWarning(unresolved)), {
+    code: 'connected_accounts_unresolved' as const
+  })
 }
 
 export function claudeAccountMissingUnresolved(

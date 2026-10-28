@@ -106,7 +106,9 @@ export function ConnectedAccountsExtraEnvEditor({
                 aria-label={translate('connectedAccounts.extraEnvKeyLabel', 'Variable name')}
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? errorId : undefined}
-                className="h-8 w-48 font-mono text-xs"
+                variant="code"
+                density="compact"
+                className="w-48"
                 onChange={(event) => updateRow(row.rowId, { key: event.target.value })}
                 onFocus={() => setEditing(true)}
                 onBlur={() => {
@@ -119,7 +121,9 @@ export function ConnectedAccountsExtraEnvEditor({
                 disabled={disabled}
                 placeholder={translate('connectedAccounts.extraEnvValuePlaceholder', 'value')}
                 aria-label={translate('connectedAccounts.extraEnvValueLabel', 'Variable value')}
-                className="h-8 min-w-0 flex-1 font-mono text-xs"
+                variant="code"
+                density="compact"
+                className="min-w-0 flex-1"
                 onChange={(event) => updateRow(row.rowId, { value: event.target.value })}
                 onFocus={() => setEditing(true)}
                 onBlur={() => {

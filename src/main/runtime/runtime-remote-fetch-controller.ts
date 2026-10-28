@@ -220,30 +220,32 @@ export class RuntimeRemoteFetchController {
     }
   }
 
-  private async runExactBaseRefresh(
+  private runExactBaseRefresh(
     repoPath: string,
     base: RemoteTrackingBase,
     key: string,
     gitOptions: GitOptions & Pick<GitExecOptions, 'signal' | 'canStart'>,
     timeout = REMOTE_FETCH_TIMEOUT_MS
   ): Promise<RemoteFetchResult> {
-    return gitExecFileAsync(
-      [
-        ...GIT_FETCH_SKIP_AUTO_MAINTENANCE_CONFIG_ARGS,
-        'fetch',
-        '--no-tags',
-        base.remote,
-        `+refs/heads/${base.branch}:${base.ref}`
-      ],
-      {
-        cwd: repoPath,
-        ...gitOptions,
-        ...(await remoteFetchEnvOptions(this.resolveFetchEnv, repoPath, gitOptions)),
-        useConfiguredSshCommandForNetwork: true,
-        timeout
-      }
-    )
-      .then((): RemoteFetchResult => {
+    // Env resolution stays inside the chain so a failure resolves to git_error instead of rejecting the queue tail.
+    return remoteFetchEnvOptions(this.resolveFetchEnv, repoPath, gitOptions)
+      .then(async (envOptions): Promise<RemoteFetchResult> => {
+        await gitExecFileAsync(
+          [
+            ...GIT_FETCH_SKIP_AUTO_MAINTENANCE_CONFIG_ARGS,
+            'fetch',
+            '--no-tags',
+            base.remote,
+            `+refs/heads/${base.branch}:${base.ref}`
+          ],
+          {
+            cwd: repoPath,
+            ...gitOptions,
+            ...envOptions,
+            useConfiguredSshCommandForNetwork: true,
+            timeout
+          }
+        )
         this.rememberFreshFetchCompletedAt(key)
         return { ok: true }
       })

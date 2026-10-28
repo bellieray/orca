@@ -20,7 +20,9 @@ const { RuntimeGitSyncCommands } = await import('./runtime-git-sync-commands')
 const { clearGitConfigEnvSupportCacheForTests } =
   await import('../connected-accounts/connected-accounts-git-env')
 
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
 const worktree = { id: 'wt-1', path: '/workspace/bound' } as ResolvedRuntimeGitWorktree
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
 const boundRepo = {
   id: 'bound',
   path: '/workspace/bound',
@@ -34,13 +36,16 @@ const boundRepo = {
 function commandsFor(repo: Repo | undefined): InstanceType<typeof RuntimeGitSyncCommands> {
   return new RuntimeGitSyncCommands({
     resolveRuntimeGitTarget: async () => ({ executionHostId: 'local', worktree, repo }),
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
     getRuntimeSettings: () => ({}) as GlobalSettings
   })
 }
 
 const callsFor = (subcommand: string): { env?: NodeJS.ProcessEnv }[] =>
   gitExecFileAsyncMock.mock.calls
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
     .filter(([args]) => (args as string[]).includes(subcommand))
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
     .map(([, options]) => options as { env?: NodeJS.ProcessEnv })
 
 describe('runtime (CLI/mobile) git sync with a bound GitHub account', () => {
@@ -84,12 +89,14 @@ describe('runtime (CLI/mobile) git sync with a bound GitHub account', () => {
       'is not available'
     )
     const nonProbe = gitExecFileAsyncMock.mock.calls.filter(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
       ([args]) => !(args as string[]).includes('--version')
     )
     expect(nonProbe).toEqual([])
   })
 
   it('an unbound repo push adds no env', async () => {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test doubles and untyped mock call tuples carry only the members these git commands read.
     await commandsFor({ ...boundRepo, ghAccount: undefined } as Repo).pushRuntimeGit(
       'id:wt-1',
       true

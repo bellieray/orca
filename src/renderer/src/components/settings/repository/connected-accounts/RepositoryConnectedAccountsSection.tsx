@@ -275,7 +275,8 @@ export function RepositoryConnectedAccountsSection({
               placeholder={translate('connectedAccounts.gitAuthorName', 'Name')}
               aria-label={translate('connectedAccounts.gitAuthorName', 'Name')}
               aria-invalid={authorError && !authorDraft.name.trim() ? true : undefined}
-              className="h-8 w-48 text-xs"
+              density="compact"
+              className="w-48"
               onChange={(event) =>
                 setAuthorDraft((draft) => ({ ...draft, name: event.target.value }))
               }
@@ -287,7 +288,8 @@ export function RepositoryConnectedAccountsSection({
               placeholder={translate('connectedAccounts.gitAuthorEmail', 'Email')}
               aria-label={translate('connectedAccounts.gitAuthorEmail', 'Email')}
               aria-invalid={authorError && !authorDraft.email.trim() ? true : undefined}
-              className="h-8 min-w-0 flex-1 text-xs"
+              density="compact"
+              className="min-w-0 flex-1"
               onChange={(event) =>
                 setAuthorDraft((draft) => ({ ...draft, email: event.target.value }))
               }

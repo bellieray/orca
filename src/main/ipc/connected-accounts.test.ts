@@ -37,6 +37,7 @@ const gitRepo: Repo = {
 }
 
 function setup(repos: Repo[]) {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: empty settings fixture; the fingerprint code under test reads no settings field here.
   const settings = {} as GlobalSettings
   registerConnectedAccountsHandlers({
     getRepo: (id: string) => repos.find((repo) => repo.id === id),
@@ -91,6 +92,7 @@ describe('connected accounts IPC', () => {
 
   it('staleSessionCount counts panes recorded with an older fingerprint', async () => {
     const invoke = setup([gitRepo])
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: empty settings fixture; the fingerprint code under test reads no settings field here.
     const current = connectedAccountsFingerprint(gitRepo, {} as GlobalSettings)
     expect(current).not.toBeNull()
     recordConnectedAccountsPane('pty-1', 'repo-1', 'a')
@@ -108,6 +110,7 @@ describe('connected accounts IPC', () => {
     recordConnectedAccountsPane(
       'pty-1',
       'repo-1',
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: empty settings fixture; the fingerprint code under test reads no settings field here.
       connectedAccountsFingerprint(gitRepo, {} as GlobalSettings)
     )
 

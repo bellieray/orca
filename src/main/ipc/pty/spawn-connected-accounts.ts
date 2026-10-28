@@ -44,9 +44,7 @@ function processEnvStrings(): Record<string, string> {
 
 function claudeFolderMissing(error: unknown): boolean {
   return (
-    error instanceof Error &&
-    'reason' in error &&
-    (error as { reason?: unknown }).reason === 'claudeAccountFolderMissing'
+    error instanceof Error && 'reason' in error && error.reason === 'claudeAccountFolderMissing'
   )
 }
 

@@ -29,6 +29,7 @@ import {
   recordConnectedAccountsPane
 } from './connected-accounts-pane-registry'
 
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: partial settings fixture with only the fields the account resolver reads.
 const settings = {
   claudeManagedAccounts: [{ id: 'claude-1', email: 'me@claude.ai' }],
   connectedAccountsAdmobProfiles: []

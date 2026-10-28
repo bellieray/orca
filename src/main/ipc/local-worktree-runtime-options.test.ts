@@ -168,6 +168,7 @@ describe('getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts', () => {
     }
   }
   const makeBindingStore = (repos: readonly object[]): never =>
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: git mock calls are untyped tuples; args is always the git argv array.
     ({
       getRepos: () => repos,
       getAllWorktreeMeta: () => ({ [worktreeId('bound', WT)]: {} }),
@@ -176,6 +177,7 @@ describe('getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts', () => {
     }) as never
 
   const networkGitCalls = (): unknown[][] =>
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: git mock calls are untyped tuples; args is always the git argv array.
     gitExecFileAsyncMock.mock.calls.filter(([args]) => !(args as string[]).includes('--version'))
 
   beforeEach(() => {

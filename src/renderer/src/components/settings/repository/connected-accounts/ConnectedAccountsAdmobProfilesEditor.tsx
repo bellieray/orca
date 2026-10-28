@@ -103,11 +103,9 @@ export function ConnectedAccountsAdmobProfilesEditor({
                 disabled={disabled}
                 placeholder={fieldLabels[field]}
                 aria-label={fieldLabels[field]}
-                className={
-                  field === 'credentialsDir'
-                    ? 'h-8 min-w-0 flex-1 font-mono text-xs'
-                    : 'h-8 w-36 text-xs'
-                }
+                variant={field === 'credentialsDir' ? 'code' : 'default'}
+                density="compact"
+                className={field === 'credentialsDir' ? 'min-w-0 flex-1' : 'w-36'}
                 onChange={(event) => updateDraft(profile.id, { [field]: event.target.value })}
                 onFocus={() => setEditing(true)}
                 onBlur={() => {

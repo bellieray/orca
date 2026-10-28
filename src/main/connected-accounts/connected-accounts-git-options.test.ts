@@ -20,6 +20,7 @@ const { clearGitConfigEnvSupportCacheForTests } = await import('./connected-acco
 const { RuntimeRemoteFetchController } = await import('../runtime/runtime-remote-fetch-controller')
 const { fetchPrHeadTrackingRef } = await import('../github/pr-head-tracking-ref')
 
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: partial repo fixture; the suite only reads the connected-accounts fields.
 const boundRepo = {
   id: 'bound',
   path: '/repos/bound',
