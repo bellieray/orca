@@ -5,7 +5,12 @@ import { agentReferenceToken } from '../../../../shared/orchestration-agent-refe
 
 function AgentReferencePill({ node, selected }: NodeViewProps): React.JSX.Element {
   return (
-    <NodeViewWrapper as="span" className="inline" contentEditable={false}>
+    <NodeViewWrapper
+      as="span"
+      className="inline"
+      contentEditable={false}
+      data-native-chat-agent-reference={node.attrs.address}
+    >
       <NativeChatPromptPill icon={Users} label={String(node.attrs.label)} selected={selected} />
     </NodeViewWrapper>
   )

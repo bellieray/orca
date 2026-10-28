@@ -9,7 +9,8 @@ const mutations = [
   'markWorkerDispatchReady',
   'recordWorkerStage',
   'completeDispatch',
-  'settleActiveDispatchesForTask',
+  'completeActiveDispatchesForTask',
+  'failActiveDispatchForTask',
   'failDispatch',
   'settleWorkerReport',
   'bindRun',
@@ -21,10 +22,21 @@ const mutations = [
   'resolveGate',
   'timeoutGate',
   'updateTaskStatus',
-  'createFederatedDispatch',
-  'updateFederatedDispatch',
-  'resetOrchestration'
-] as const
+  'updateFederatedDispatchResources',
+  'updateFederatedDispatchRuntimeEpoch',
+  'transitionLifecycle',
+  'abandonWorkerDispatch',
+  'failWorkerStart',
+  'markWorkerStartUnknown',
+  'beginWorkerStop',
+  'settleWorkerStop',
+  'markWorkerStopUnknown',
+  'unbindOtherRunsForCoordinator',
+  'recordAttemptObservation',
+  'resetAll',
+  'resetTasks',
+  'resetMessages'
+] as const satisfies readonly (keyof OrchestrationDb)[]
 
 /** Wake after the synchronous outer mutation; nested writes coalesce and rolled-back reads compare equal. */
 export function attachCrewMutationNotifications(ctor: { prototype: object }): void {

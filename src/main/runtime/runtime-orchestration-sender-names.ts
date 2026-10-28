@@ -71,8 +71,7 @@ export class RuntimeOrchestrationSenderNames {
       address,
       this.deps.getDb(),
       (party, reported) => this.nameOf(party, reported),
-      reportedDispatchId,
-      taskName
+      reportedDispatchId
     )
   }
 

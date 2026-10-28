@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrchestrationDb } from '../db'
 import { buildCrewSnapshot, type CrewReadDependencies } from './crew-read-model'
 import { CrewChanges } from './crew-changes'
@@ -196,4 +196,104 @@ describe('public crew read and stream', () => {
       worktreeId: 'folder-custom'
     })
   })
+})
+
+it('batches crew work as relationships scale and keeps skewed peers despite unrelated retained history', async () => {
+  const { db, deps, run, assign } = fixture()
+  for (let i = 0; i < 3; i++) {
+    assign(`term_extra_${i}`)
+  }
+  let dependency = false
+  const selection = db.listSessionDispatchesForPresentation.bind(db)
+  const selectionSpy = vi
+    .spyOn(db, 'listSessionDispatchesForPresentation')
+    .mockImplementation((now) => {
+      dependency = true
+      try {
+        return selection(now)
+      } finally {
+        dependency = false
+      }
+    })
+  let queries = 0,
+    materialized = 0
+  const prepare = db.db.prepare.bind(db.db)
+  const querySpy = vi.spyOn(db.db, 'prepare').mockImplementation((sql) => {
+    if (!dependency) {
+      queries++
+    }
+    const statement = prepare(sql)
+    const ownRead = !dependency
+    return new Proxy(statement, {
+      get(target, key) {
+        const value = Reflect.get(target, key)
+        if (key === 'all') {
+          return (...args: unknown[]) => {
+            const rows = statement.all(...args)
+            if (ownRead) {
+              materialized += rows.length
+            }
+            return rows
+          }
+        }
+        return typeof value === 'function' ? value.bind(target) : value
+      }
+    })
+  })
+  buildCrewSnapshot('term_coord', deps)
+  const small = { queries, materialized }
+  const readCount = selectionSpy.mock.calls.length
+  expect(readCount).toBe(1)
+  const frames: OrchestrationCrewFrame[] = []
+  const stop = subscribeCrew(
+    () => buildCrewSnapshot('term_coord', deps),
+    db.crewChanges.subscribe,
+    (frame) => frames.push(frame)
+  )
+  for (let i = 0; i < 100; i++) {
+    const old = assign(`term_retained_${i}`)
+    db.completeDispatch(old.id)
+    db.db
+      .prepare("UPDATE dispatch_contexts SET completed_at = '2000-01-01T00:00:00Z' WHERE id = ?")
+      .run(old.id)
+  }
+  await new Promise<void>((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(resolve))
+  expect(frames.filter((frame) => frame.type === 'complete')).toHaveLength(1)
+  queries = 0
+  materialized = 0
+  buildCrewSnapshot('term_coord', deps)
+  expect({ queries, materialized }).toEqual(small)
+  for (let i = 3; i < 30; i++) {
+    assign(`term_extra_${i}`)
+  }
+  queries = 0
+  materialized = 0
+  const large = buildCrewSnapshot('term_coord', deps)
+  expect(large.sections.managing).toHaveLength(30)
+  expect(queries).toBe(small.queries)
+  expect(materialized).toBeLessThanOrEqual(small.materialized * 10)
+  querySpy.mockRestore()
+  selectionSpy.mockRestore()
+  for (let i = 0; i < 100; i++) {
+    db.insertMessage({
+      from: `run:${run.id}`,
+      to: `term_mail_peer_${i}`,
+      subject: 'Outbound only',
+      body: String(i)
+    })
+  }
+  const latest = db.insertMessage({
+    from: 'term_mail_peer_0',
+    to: 'term_coord',
+    subject: 'Inbound',
+    body: 'highest sequence across aliases'
+  })
+  const skewed = buildCrewSnapshot('term_coord', deps)
+  expect(skewed.sections.talkingWith).toHaveLength(100)
+  expect(
+    skewed.sections.talkingWith.find((row) => row.latest?.preview === latest.body)?.latest
+  ).toMatchObject({ sequence: latest.sequence, direction: 'from' })
+  stop()
+  vi.restoreAllMocks()
 })

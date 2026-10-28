@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AGENT_STATUS_STALE_AFTER_MS } from '../../../../shared/agent-status-freshness'
 import type { OrchestrationDb } from '../db'
 import { currentRunCoordinatorOrcaSessionIdSql } from '../db/runs/run-coordinator-orca-session'
 
@@ -41,21 +42,26 @@ const assignmentJoins = `JOIN tasks t ON t.id = d.task_id JOIN runs r ON r.id = 
   LEFT JOIN worker_dispatches w ON w.dispatch_id = d.id
   LEFT JOIN federated_dispatches f ON f.dispatch_id = d.id`
 
-export function readCrewAssignments(db: OrchestrationDb, cutoff: string): CrewAssignmentRow[] {
+export function readCrewAssignments(db: OrchestrationDb, now: number): CrewAssignmentRow[] {
+  const cutoff = new Date(now - AGENT_STATUS_STALE_AFTER_MS).toISOString()
+  const sessionIds = db.listSessionDispatchesForPresentation(now).map(({ dispatch }) => dispatch.id)
   return CrewAssignment.array().parse(
     db.db
       .prepare(`
     SELECT ${assignmentColumns} FROM dispatch_contexts d ${assignmentJoins}
-    WHERE d.status IN ('pending', 'dispatched')
+    WHERE d.assignee_orca_session_id IS NULL AND d.status IN ('pending', 'dispatched')
     UNION ALL
     SELECT ${assignmentColumns} FROM dispatch_contexts d ${assignmentJoins}
-    WHERE d.status NOT IN ('pending', 'dispatched') AND julianday(d.completed_at) >= julianday(?)
+    WHERE d.assignee_orca_session_id IS NULL AND d.status NOT IN ('pending', 'dispatched') AND julianday(d.completed_at) >= julianday(?)
       AND NOT EXISTS (SELECT 1 FROM dispatch_contexts newer WHERE newer.rowid > d.rowid
         AND ((d.assignee_orca_session_id IS NOT NULL AND newer.assignee_orca_session_id = d.assignee_orca_session_id)
           OR (d.assignee_handle IS NOT NULL AND newer.assignee_handle = d.assignee_handle)))
+    UNION ALL
+    SELECT ${assignmentColumns} FROM dispatch_contexts d ${assignmentJoins}
+    WHERE d.id IN (SELECT value FROM json_each(?))
     ORDER BY ordinal DESC
   `)
-      .all(cutoff)
+      .all(cutoff, JSON.stringify(sessionIds))
   )
 }
 

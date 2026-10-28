@@ -61,7 +61,7 @@ export function buildCrewSnapshot(
   const records = deps.records
   const { party, aliases, parties } = createCrewPartyRegistry(deps)
   const rawSession = parseOrcaSessionAddress(address)
-  const self = party(
+  let self = party(
     rawSession,
     rawSession ? null : address,
     rawSession ? null : deps.paneForHandle(address)
@@ -69,11 +69,12 @@ export function buildCrewSnapshot(
   if (!self) {
     return emptyCrew('unknown')
   }
-  const assignments = readCrewAssignments(db, cutoff).sort(
+  const assignments = readCrewAssignments(db, now).sort(
     (a, b) =>
       Number(['pending', 'dispatched'].includes(b.status)) -
         Number(['pending', 'dispatched'].includes(a.status)) || b.ordinal - a.ordinal
   )
+  const assignmentsById = new Map(assignments.map((row) => [row.id, row]))
   const assignmentParty = new Map<string, Party>()
   const addAssignment = (row: CrewAssignmentRow): Party => {
     const worker = party(
@@ -101,6 +102,7 @@ export function buildCrewSnapshot(
     }
     party(row.creator_orca_session_id, row.creator_handle, row.creator_pane_key)
   }
+  self = parties.get(aliases.get(self.address) ?? self.address) ?? self
   // A peer-only coordinator can have no eligible assignments in its Run.
   const ownedRuns = db.db
     .prepare(
@@ -172,7 +174,7 @@ export function buildCrewSnapshot(
           : 'unknown'),
       ...(title && assignment ? { task: { title, state: assignment.task_status } } : {}),
       ...(assignment?.stage && !['accepted', 'ready'].includes(assignment.stage)
-        ? { progress: assignment.stage }
+        ? { progress: assignment.stage.replaceAll('_', ' ') }
         : {}),
       ...(assignment?.host_label ? { hostLabel: assignment.host_label } : {}),
       ...(sendAddress && isPublicOrchestrationAddress(sendAddress) ? { sendAddress } : {})
@@ -224,7 +226,7 @@ export function buildCrewSnapshot(
       )
     } else if (worker.address === self.address && parent && parent.address !== self.address) {
       const parentAssignment = assignment.creator_dispatch_id
-        ? assignments.find((candidate) => candidate.id === assignment.creator_dispatch_id)
+        ? assignmentsById.get(assignment.creator_dispatch_id)
         : undefined
       const sendAddress =
         creator?.address === parent.address
@@ -249,7 +251,7 @@ export function buildCrewSnapshot(
     let targetAddress = aliases.get(message.peer)
     if (!targetAddress) {
       const parsed = parseOrcaSessionAddress(message.peer)
-      targetAddress = party(parsed, parsed ? null : message.peer, null)?.address
+      targetAddress = party(parsed, parsed ? null : message.peer, null, message.peer)?.address
     }
     if (!targetAddress || targetAddress === self.address) {
       continue
@@ -257,7 +259,15 @@ export function buildCrewSnapshot(
     const target = parties.get(targetAddress)!
     let row = rows.get(targetAddress)
     if (!row) {
-      row = decorate(target, 'peer', undefined, target.address)
+      row = decorate(
+        target,
+        'peer',
+        undefined,
+        target.orcaSessionId
+          ? target.address
+          : (target.terminalHandle ??
+              (target.address.startsWith('dispatch:') ? target.address : undefined))
+      )
       snapshot.sections.talkingWith.push(row)
     }
     if (!row.latest || message.sequence > row.latest.sequence) {

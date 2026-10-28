@@ -186,12 +186,14 @@ export function NativeChatPromptEditor({
               if (!editor.isEditable) {
                 return
               }
+              editor.view.dispatch(closeHistory(editor.state.tr))
               editor.commands.insertContent(
                 references.flatMap((attrs) => [
                   { type: NativeChatAgentReference.name, attrs },
                   { type: 'text', text: ' ' }
                 ])
               )
+              editor.view.dispatch(closeHistory(editor.state.tr))
             },
             insertText: (text) => {
               const content = editor.schema.nodeFromJSON(promptTextContent(text))

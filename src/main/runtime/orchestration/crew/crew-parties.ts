@@ -5,24 +5,25 @@ import {
   parseOrcaSessionAddress
 } from '../../../../shared/orca-session-address'
 import { isPublicOrchestrationAddress } from '../../../../shared/orchestration-agent-reference'
-import { canonicalOrcaSessionId } from '../canonical-orca-session-id'
+import { createCanonicalSessionPaneResolver } from '../structured-session-lineage'
+import { createCanonicalOrcaSessionResolver } from '../canonical-orca-session-id'
 import type { CrewReadDependencies } from './crew-read-model'
 
 export type Party = AgentMessageSender['party'] & { paneKey: string | null }
 
 export function createCrewPartyRegistry(deps: CrewReadDependencies) {
   const recordList = deps.records?.listRecords() ?? []
+  const resolveRoot = createCanonicalOrcaSessionResolver({ listRecords: () => recordList })
   const rootCache = new Map<string, string>()
   const root = (id: string): string => {
     let value = rootCache.get(id)
     if (!value) {
-      value = isOrcaSessionId(id)
-        ? canonicalOrcaSessionId(id, { listRecords: () => recordList })
-        : id
+      value = isOrcaSessionId(id) ? resolveRoot(id) : id
       rootCache.set(id, value)
     }
     return value
   }
+  const canonicalPane = createCanonicalSessionPaneResolver(deps.records)
   const parties = new Map<string, Party>()
   const aliases = new Map<string, string>()
   const party = (
@@ -39,7 +40,7 @@ export function createCrewPartyRegistry(deps: CrewReadDependencies) {
     const publicAddress =
       sessionId && isOrcaSessionId(sessionId)
         ? formatOrcaSessionAddress(sessionId)
-        : (publicHandle ?? fallback)
+        : ((publicHandle && aliases.get(publicHandle)) ?? publicHandle ?? fallback)
     if (!publicAddress || !isPublicOrchestrationAddress(publicAddress)) {
       return undefined
     }
@@ -48,7 +49,7 @@ export function createCrewPartyRegistry(deps: CrewReadDependencies) {
       address: publicAddress,
       terminalHandle: publicHandle,
       orcaSessionId: parseOrcaSessionAddress(publicAddress),
-      paneKey: pane
+      paneKey: sessionId ? canonicalPane(sessionId) : pane
     }
     parties.set(publicAddress, value)
     for (const alias of [

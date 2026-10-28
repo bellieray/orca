@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { useAppStore } from '@/store'
 import { subscribeRuntimeRpc } from '@/runtime/runtime-rpc-subscribe'
-import { getRuntimeEnvironmentRevision } from '@/runtime/runtime-environment-revision'
+import {
+  getRuntimeEnvironmentRevision,
+  onRuntimeEnvironmentRevisionsChanged,
+  onRuntimeEnvironmentsRetired
+} from '@/runtime/runtime-environment-revision'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import {
   CrewFrame,
@@ -22,7 +26,8 @@ export class CrewSubscription {
   constructor(
     private readonly target: RuntimeClientTarget,
     private readonly party: string,
-    private readonly generation: string
+    private readonly generation: string,
+    private readonly onIdle?: () => void
   ) {}
   private publish(snapshot: OrchestrationCrewSnapshot) {
     if (JSON.stringify(this.snapshot) === JSON.stringify(snapshot)) {
@@ -112,6 +117,7 @@ export class CrewSubscription {
         this.active = false
         this.pending = undefined
         this.snapshot = UNKNOWN
+        this.onIdle?.()
       }
     }
   }
@@ -123,6 +129,25 @@ export function useOrchestrationCrew(
   party: string | null
 ): OrchestrationCrewSnapshot {
   const environmentId = target?.kind === 'environment' ? target.environmentId : null
+  const pairingRevision = useSyncExternalStore(
+    useCallback(
+      (wake) => {
+        const changed = (ids: readonly string[]) => {
+          if (environmentId && ids.includes(environmentId)) {
+            wake()
+          }
+        }
+        const dispose = onRuntimeEnvironmentRevisionsChanged(changed)
+        const retire = onRuntimeEnvironmentsRetired(changed)
+        return () => {
+          dispose()
+          retire()
+        }
+      },
+      [environmentId]
+    ),
+    () => (environmentId ? getRuntimeEnvironmentRevision(environmentId) : undefined)
+  )
   const generation = useAppStore((state) => {
     if (!environmentId) {
       return 'local'
@@ -133,7 +158,7 @@ export function useOrchestrationCrew(
     }
     return JSON.stringify([
       environmentId,
-      getRuntimeEnvironmentRevision(environmentId),
+      pairingRevision,
       entry.status.runtimeId,
       entry.connectionGeneration,
       entry.hostContactEpoch
@@ -146,7 +171,12 @@ export function useOrchestrationCrew(
     }
     let entry = entries.get(key)
     if (!entry) {
-      entry = new CrewSubscription(target, party, generation)
+      const created = new CrewSubscription(target, party, generation, () => {
+        if (entries.get(key) === created) {
+          entries.delete(key)
+        }
+      })
+      entry = created
       entries.set(key, entry)
     }
     return entry

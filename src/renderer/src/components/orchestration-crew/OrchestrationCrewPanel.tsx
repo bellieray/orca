@@ -44,9 +44,9 @@ function Dot({ row }: { row: OrchestrationCrewRow }) {
       aria-label={row.status}
       className={cn(
         'inline-block size-1.5 shrink-0 rounded-full',
-        row.pendingQuestion || row.status === 'waiting'
+        row.pendingQuestion || row.status === 'waiting' || row.status === 'blocked'
           ? 'bg-status-warning'
-          : row.status === 'working' || row.status === 'thinking'
+          : row.status === 'working'
             ? 'bg-status-success'
             : 'bg-muted-foreground'
       )}
@@ -80,6 +80,15 @@ function IconButton({
         {label}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+function runningWorker(row: OrchestrationCrewRow): boolean {
+  return Boolean(
+    row.sendAddress &&
+    row.task &&
+    !['completed', 'failed'].includes(row.task.state) &&
+    (row.task.state === 'dispatched' || ['working', 'waiting', 'blocked'].includes(row.status))
   )
 }
 
@@ -141,7 +150,7 @@ export function CrewPanelContent({
       onMouseDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         event.stopPropagation()
-        if (event.key === 'Escape' && open && !event.defaultPrevented) {
+        if (event.key === 'Escape' && open) {
           event.preventDefault()
           changeOpen(false)
         }
@@ -173,17 +182,8 @@ export function CrewPanelContent({
                         variant="ghost"
                         size="xs"
                         className="ml-auto normal-case tracking-normal"
-                        disabled={
-                          !canMention ||
-                          !rows.some((row) => row.sendAddress && row.task?.state === 'dispatched')
-                        }
-                        onClick={() =>
-                          mention(
-                            rows.filter(
-                              (row) => row.sendAddress && row.task?.state === 'dispatched'
-                            )
-                          )
-                        }
+                        disabled={!canMention || !rows.some(runningWorker)}
+                        onClick={() => mention(rows.filter(runningWorker))}
                       >
                         Mention all
                       </Button>
@@ -226,9 +226,14 @@ export function CrewPanelContent({
             ))}
           </span>
           {pending > 0 ? (
-            <Badge variant="outline" className="text-status-warning">
-              {pending}
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-status-warning">
+                  {pending}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>{pending} waiting for you</TooltipContent>
+            </Tooltip>
           ) : null}
         </Button>
       )}
