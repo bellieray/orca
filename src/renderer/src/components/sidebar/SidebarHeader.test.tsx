@@ -29,6 +29,9 @@ type MockState = {
   openModal: (modal: string, data?: unknown) => void
   updateSettings: (patch: Record<string, unknown>) => void
   activeContextualTourId: string | null
+  hiddenRepoIds: string[]
+  revealHiddenRepos: boolean
+  worktreesByRepo: Record<string, never[]>
   settings?: {
     experimentalAgentDashboardPopout?: boolean
     agentsSidebarIntroShown?: boolean
@@ -120,6 +123,9 @@ beforeEach(() => {
     openModal: vi.fn(),
     updateSettings: vi.fn(),
     activeContextualTourId: null,
+    hiddenRepoIds: [],
+    revealHiddenRepos: false,
+    worktreesByRepo: {},
     settings: {}
   }
   container = document.createElement('div')
