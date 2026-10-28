@@ -20,10 +20,15 @@ export function useTerminalCrewIdentity(
   const host = parseExecutionHostId(hostId)
   const environmentId =
     remote?.environmentId ?? (host?.kind === 'runtime' ? host.environmentId : null)
+  const locallyOwned = host?.kind === 'local' || host?.kind === 'ssh'
   const target = useMemo<RuntimeClientTarget | null>(
     () =>
-      environmentId ? { kind: 'environment', environmentId } : hostId ? { kind: 'local' } : null,
-    [environmentId, hostId]
+      environmentId
+        ? { kind: 'environment', environmentId }
+        : locallyOwned
+          ? { kind: 'local' }
+          : null,
+    [environmentId, locallyOwned]
   )
   const isRemote = remote !== null
   const key = JSON.stringify([paneKey, ptyId, target])

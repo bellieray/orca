@@ -1,4 +1,4 @@
-import type { RuntimeSyncedTab } from '../runtime-session-records'
+import type { RuntimeSyncedTab } from '../../../shared/runtime-types'
 import type { RuntimeLeafRecord } from '../runtime-terminal-state-records'
 
 export function visibleGraphChangedWorktrees(

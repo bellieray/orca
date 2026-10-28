@@ -25,6 +25,17 @@ import {
 } from './native-chat-composer-draft-store'
 import { captureTerminalDropTarget } from '../terminal-pane/terminal-drop-target'
 import { insertTerminalCrewMention } from '../terminal-pane/terminal-crew-mention'
+import { takeStructuredAgentSessionSendSlot } from './structured-agent-session-send-slot'
+import { clearStructuredAgentSessionPendingSends } from './structured-agent-session-pending-sends'
+import {
+  attemptStructuredAgentSessionSend,
+  noteStructuredAgentSessionFence
+} from './structured-agent-session-send-attempt'
+
+const queuedRuntime = vi.hoisted(() => ({ call: vi.fn() }))
+vi.mock('@/runtime/structured-agent-session-client', () => ({
+  callStructuredAgentSession: queuedRuntime.call
+}))
 
 vi.mock('@/lib/open-agent-message-sender', () => ({ openOrchestrationCrewAgent: vi.fn() }))
 vi.mock('./native-chat-runtime-send', () => ({
@@ -39,6 +50,7 @@ vi.mock('@/lib/worker-terminal-takeover-report', () => ({
 afterEach(() => {
   cleanup()
   clearNativeChatComposerDraftsForTests()
+  clearStructuredAgentSessionPendingSends('test-session')
   vi.restoreAllMocks()
 })
 const first = { label: 'Same name', address: 'term_first', hostKey: 'local' }
@@ -147,8 +159,36 @@ it('serializes before structured queue admission, PTY writes and goal submission
   expect(structured.send).toHaveBeenCalledWith(wire, [])
   expect(wire.match(/\[Orca agent/g)).toHaveLength(2)
   const queued = vi.mocked(structured.send).mock.calls[0][0]
+  const entry = takeStructuredAgentSessionSendSlot({
+    sessionId: 'test-session',
+    text: queued,
+    delivery: 'queue-if-active'
+  })
+  expect(entry).not.toBeNull()
   updateNativeChatComposerDraft('send', { text: 'new draft', document: undefined }, 'immediate')
-  expect(queued).toBe(wire)
+  noteStructuredAgentSessionFence('test-session', 1)
+  queuedRuntime.call.mockResolvedValue({
+    ok: true,
+    replayed: true,
+    fence: 1,
+    value: { clientMessageId: entry!.clientMessageId }
+  })
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await attemptStructuredAgentSessionSend({
+      entry: entry!,
+      target: { kind: 'local' },
+      beforeIssue: vi.fn(),
+      abandoned: () => false,
+      reconcile: vi.fn()
+    })
+  }
+  expect(queuedRuntime.call).toHaveBeenCalledTimes(2)
+  for (const [, method, params] of queuedRuntime.call.mock.calls) {
+    expect(method).toBe('agentSession.send')
+    expect(params.body.blocks).toEqual([{ type: 'text', text: wire }])
+    expect(params.delivery).toBe('queue-if-active')
+    expect(params.envelope.clientOperationId).toBe(entry!.clientMessageId)
+  }
   await act(async () => {
     await structuredHook.result.current('/compact')
   })
