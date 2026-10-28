@@ -20724,6 +20724,8 @@
     "revenueCatNote": "Follows the Claude account (claude.ai connector).",
     "saveFailed": "Could not save the account binding.",
     "staleSessions": "{{count}} running sessions in this project still use the previous accounts. Restart them to apply.",
+    "staleSessions_one": "{{count}} running session in this project still uses the previous accounts. Restart it to apply.",
+    "staleSessions_other": "{{count}} running sessions in this project still use the previous accounts. Restart them to apply.",
     "summaryExtraEnv": "Env",
     "summaryMissing": "{{account}} (missing)",
     "title": "Connected Accounts",

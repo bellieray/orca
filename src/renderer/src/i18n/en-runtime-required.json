@@ -963,7 +963,9 @@
     "keywordEnv": "environment variables",
     "keywordFirebase": "firebase",
     "keywordGithub": "github",
-    "keywordRevenueCat": "revenuecat"
+    "keywordRevenueCat": "revenuecat",
+    "staleSessions_one": "{{count}} running session in this project still uses the previous accounts. Restart it to apply.",
+    "staleSessions_other": "{{count}} running sessions in this project still use the previous accounts. Restart them to apply."
   },
   "dashboard": {
     "sidebar": {

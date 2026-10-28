@@ -11,6 +11,7 @@ import {
   hasClientEnvironmentFooter,
   stripClientEnvironmentFooter
 } from '../../../../shared/client-environment-info'
+import { isConnectedAccountsRefusalLine } from '../../../../shared/connected-accounts/connected-accounts-terminal-notice'
 import {
   localizeTerminalSpawnHints,
   withoutTerminalSpawnIssueRequest
@@ -90,6 +91,7 @@ export function isExplainedTerminalError(error: string): boolean {
     .some(
       (line) =>
         LEGACY_TERMINAL_HOST_GONE_PATTERN.test(line) ||
+        isConnectedAccountsRefusalLine(line) ||
         [
           TERMINAL_HOST_GONE,
           SOURCE_RESTORE_REQUIRED,

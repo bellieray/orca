@@ -61,6 +61,23 @@ export function ConnectedAccountsExtraEnvEditor({
     entries.map((entry, index) => ({ rowId: index, key: entry.key, value: entry.value }))
   )
   const [nextRowId, setNextRowId] = useState(entries.length)
+  const [editing, setEditing] = useState(false)
+  const entriesKey = JSON.stringify(entries)
+  const [syncedKey, setSyncedKey] = useState(entriesKey)
+  // Adopt env synced in while the section is open; unsaved (blank or invalid) rows stay.
+  if (syncedKey !== entriesKey && !editing) {
+    setSyncedKey(entriesKey)
+    const unsaved = rows.filter((row) => !row.key.trim() || extraEnvRowError(row, rows, platform))
+    setRows([
+      ...entries.map((entry, index) => ({
+        rowId: nextRowId + index,
+        key: entry.key,
+        value: entry.value
+      })),
+      ...unsaved
+    ])
+    setNextRowId(nextRowId + entries.length)
+  }
 
   const commit = (nextRows: ExtraEnvDraftRow[]) => {
     onCommit(
@@ -91,7 +108,11 @@ export function ConnectedAccountsExtraEnvEditor({
                 aria-describedby={error ? errorId : undefined}
                 className="h-8 w-48 font-mono text-xs"
                 onChange={(event) => updateRow(row.rowId, { key: event.target.value })}
-                onBlur={() => commit(rows)}
+                onFocus={() => setEditing(true)}
+                onBlur={() => {
+                  setEditing(false)
+                  commit(rows)
+                }}
               />
               <Input
                 value={row.value}
@@ -100,7 +121,11 @@ export function ConnectedAccountsExtraEnvEditor({
                 aria-label={translate('connectedAccounts.extraEnvValueLabel', 'Variable value')}
                 className="h-8 min-w-0 flex-1 font-mono text-xs"
                 onChange={(event) => updateRow(row.rowId, { value: event.target.value })}
-                onBlur={() => commit(rows)}
+                onFocus={() => setEditing(true)}
+                onBlur={() => {
+                  setEditing(false)
+                  commit(rows)
+                }}
               />
               <Button
                 type="button"

@@ -6,6 +6,10 @@ import { Input } from '../../../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../ui/select'
 import { translate } from '@/i18n/i18n'
 import { createBrowserUuid } from '@/lib/browser-uuid'
+import {
+  admobProfilesToPersist,
+  resyncAdmobProfileDrafts
+} from './connected-accounts-admob-profile-drafts'
 
 // Radix forbids empty item values; the sentinel means "use the machine's AdMob setup".
 const ADMOB_DEFAULT_VALUE = '__connected_accounts_admob_default__'
@@ -22,12 +26,6 @@ type ConnectedAccountsAdmobProfilesEditorProps = {
   onSaveProfiles: (profiles: ConnectedAccountsAdmobProfile[]) => void
 }
 
-function isCompleteProfile(profile: ConnectedAccountsAdmobProfile): boolean {
-  return Boolean(
-    profile.name.trim() && profile.credentialsDir.trim() && profile.publisherCode.trim()
-  )
-}
-
 /** Profiles are global; incomplete drafts stay local because settings normalization drops them. */
 export function ConnectedAccountsAdmobProfilesEditor({
   boundProfileId,
@@ -38,12 +36,20 @@ export function ConnectedAccountsAdmobProfilesEditor({
   onSaveProfiles
 }: ConnectedAccountsAdmobProfilesEditorProps): React.JSX.Element {
   const [drafts, setDrafts] = useState<ConnectedAccountsAdmobProfile[]>(profiles)
+  const [editing, setEditing] = useState(false)
+  const profilesKey = JSON.stringify(profiles)
+  const [syncedKey, setSyncedKey] = useState(profilesKey)
+  // Adopt profile edits synced in while the section is open, unless a field is mid-edit.
+  if (syncedKey !== profilesKey && !editing) {
+    setSyncedKey(profilesKey)
+    setDrafts(resyncAdmobProfileDrafts(drafts, profiles))
+  }
   const boundInProfiles = Boolean(
     boundProfileId && profiles.some((profile) => profile.id === boundProfileId)
   )
 
   const commit = (nextDrafts: ConnectedAccountsAdmobProfile[]) => {
-    onSaveProfiles(nextDrafts.filter(isCompleteProfile))
+    onSaveProfiles(admobProfilesToPersist(nextDrafts, profiles))
   }
 
   const updateDraft = (id: string, patch: Partial<ConnectedAccountsAdmobProfile>) => {
@@ -103,7 +109,11 @@ export function ConnectedAccountsAdmobProfilesEditor({
                     : 'h-8 w-36 text-xs'
                 }
                 onChange={(event) => updateDraft(profile.id, { [field]: event.target.value })}
-                onBlur={() => commit(drafts)}
+                onFocus={() => setEditing(true)}
+                onBlur={() => {
+                  setEditing(false)
+                  commit(drafts)
+                }}
               />
             ))}
             <Button

@@ -355,6 +355,13 @@ describe('isExplainedTerminalError', () => {
     expect(humanized).not.toContain('terminal_pane_owner_host_mismatch')
   })
 
+  it('treats a refused connected-accounts launch as user-fixable, without an issue link', () => {
+    const refusal =
+      "Error invoking remote method 'pty:spawn': Error: Claude account a@b.com is not available: the Claude account was removed from Orca. Fix: Open Connected Accounts and re-add the Claude account\nFirebase account c@d.com is not available: not signed in. Fix: npx -y firebase-tools@latest login:add"
+    expect(isExplainedTerminalError(refusal)).toBe(true)
+    expect(isExplainedTerminalError('Claude account is not available')).toBe(false)
+  })
+
   it('keeps the issue link for errors Orca cannot explain', () => {
     expect(isExplainedTerminalError('Paste failed.')).toBe(false)
     expect(isExplainedTerminalError('node-pty: open_slave failed: EMFILE')).toBe(false)

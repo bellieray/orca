@@ -20547,6 +20547,8 @@
     "revenueCatNote": "Claude hesabını izler (claude.ai bağlayıcısı).",
     "saveFailed": "Hesap bağlaması kaydedilemedi.",
     "staleSessions": "Bu projede çalışan {{count}} oturum hâlâ önceki hesapları kullanıyor. Uygulamak için yeniden başlatın.",
+    "staleSessions_one": "Bu projede çalışan {{count}} oturum hâlâ önceki hesapları kullanıyor. Uygulamak için yeniden başlatın.",
+    "staleSessions_other": "Bu projede çalışan {{count}} oturum hâlâ önceki hesapları kullanıyor. Uygulamak için yeniden başlatın.",
     "summaryExtraEnv": "Env",
     "summaryMissing": "{{account}} (eksik)",
     "title": "Bağlı Hesaplar",
