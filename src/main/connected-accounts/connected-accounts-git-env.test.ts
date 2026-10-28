@@ -28,6 +28,7 @@ import {
 
 const HELPER = '!gh auth git-credential'
 const binding = { host: 'github.com', user: 'octo' }
+const author = { name: 'Octo', email: 'octo@example.com' }
 
 function configPairs(env: Record<string, string>): [string, string][] {
   const count = Number(env.GIT_CONFIG_COUNT ?? '0')
@@ -154,7 +155,7 @@ describe('resolveGhSpawnEnv', () => {
   it('returns the bound patch when token and git are available', async () => {
     stubGitVersion('git version 2.45.0\n')
     vi.mocked(resolveGhAccountToken).mockResolvedValue('t')
-    const result = await resolveGhSpawnEnv({ binding, cwd: '/repo', baseEnv: {} })
+    const result = await resolveGhSpawnEnv({ binding, author, cwd: '/repo', baseEnv: {} })
     expect('unresolved' in result).toBe(false)
     expect(result.env.GH_TOKEN).toBe('t')
     expect(resolveGhAccountToken).toHaveBeenCalledWith(binding, { cwd: '/repo' })
@@ -165,7 +166,7 @@ describe('resolveGhSpawnEnv', () => {
     vi.mocked(resolveGhAccountToken).mockRejectedValue(
       createGhBoundAccountUnavailableError(binding)
     )
-    const result = await resolveGhSpawnEnv({ binding, cwd: '/repo', baseEnv: {} })
+    const result = await resolveGhSpawnEnv({ binding, author, cwd: '/repo', baseEnv: {} })
     if (!('unresolved' in result)) {
       throw new Error('expected unresolved')
     }
@@ -180,7 +181,7 @@ describe('resolveGhSpawnEnv', () => {
   it('old gh asks for an upgrade instead of a login', async () => {
     stubGitVersion('git version 2.45.0\n')
     vi.mocked(resolveGhAccountToken).mockRejectedValue(createGhMultiAccountUnsupportedError())
-    const result = await resolveGhSpawnEnv({ binding, cwd: '/repo', baseEnv: {} })
+    const result = await resolveGhSpawnEnv({ binding, author, cwd: '/repo', baseEnv: {} })
     if (!('unresolved' in result)) {
       throw new Error('expected unresolved')
     }
@@ -192,7 +193,7 @@ describe('resolveGhSpawnEnv', () => {
   it('old git reports the binding unresolvable', async () => {
     stubGitVersion('git version 2.30.0\n')
     vi.mocked(resolveGhAccountToken).mockResolvedValue('t')
-    const result = await resolveGhSpawnEnv({ binding, cwd: '/repo', baseEnv: {} })
+    const result = await resolveGhSpawnEnv({ binding, author, cwd: '/repo', baseEnv: {} })
     if (!('unresolved' in result)) {
       throw new Error('expected unresolved')
     }
@@ -207,6 +208,7 @@ describe('resolveGhSpawnEnv', () => {
     vi.mocked(resolveGhAccountToken).mockResolvedValue('t')
     const result = await resolveGhSpawnEnv({
       binding,
+      author,
       cwd: '/repo',
       baseEnv: { GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'a', GIT_CONFIG_VALUE_0: 'b' }
     })
@@ -219,4 +221,27 @@ describe('resolveGhSpawnEnv', () => {
     // Restarted protocol: the atomic merge drops the ambiguous indices and keeps the reset.
     expect(configPairs(result.env)).toEqual([['credential.https://github.com.helper', '']])
   })
+
+  it.each([undefined, { name: 'Octo', email: '  ' }])(
+    'a bound account without a commit author is unresolved, not the machine identity (%o)',
+    async (missingAuthor) => {
+      stubGitVersion('git version 2.45.0\n')
+      vi.mocked(resolveGhAccountToken).mockResolvedValue('t')
+      const result = await resolveGhSpawnEnv({
+        binding,
+        author: missingAuthor,
+        cwd: '/repo',
+        baseEnv: {}
+      })
+      if (!('unresolved' in result)) {
+        throw new Error('expected unresolved')
+      }
+      expect(result.unresolved).toMatchObject({
+        tool: 'git',
+        fixCommand: 'Set the commit author in Connected Accounts'
+      })
+      expect(result.env.GH_TOKEN).toBe(CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED)
+      expect(result.env.GIT_AUTHOR_EMAIL).toBeUndefined()
+    }
+  )
 })

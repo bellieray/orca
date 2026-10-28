@@ -14,6 +14,8 @@ import type { ConnectedAccountsUnresolved } from './connected-accounts-static-en
 /** Non-empty bogus token: gh fails auth instead of reading the keyring's default account. */
 export const CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED = 'orca-connected-accounts-unresolved'
 
+export const CONNECTED_ACCOUNTS_GIT_AUTHOR_FIX = 'Set the commit author in Connected Accounts'
+
 // Why: bare `gh` keeps the value free of shell quoting; Git for Windows runs `!` helpers via its bundled sh.
 const GH_CREDENTIAL_HELPER = '!gh auth git-credential'
 const GIT_CONFIG_ENV_KEY_RE = /^GIT_CONFIG_(?:COUNT|KEY_\d+|VALUE_\d+)$/
@@ -51,6 +53,15 @@ function ghHostEnv(binding: GhAccountBinding, token: string): Record<string, str
     GH_HOST: binding.host,
     GH_PROMPT_DISABLED: '1'
   }
+}
+
+/** Blank fields count as missing: git would fall back to the machine identity for them. */
+export function completeGitAuthor(
+  author: ConnectedAccountsGitAuthor | undefined
+): ConnectedAccountsGitAuthor | null {
+  const name = author?.name.trim()
+  const email = author?.email.trim()
+  return name && email ? { name, email } : null
 }
 
 export function buildBoundGitEnvPatch(args: {
@@ -165,6 +176,17 @@ export async function resolveGhSpawnEnv(args: {
     })
   }
 
+  // Without an author, commits would carry the machine's (possibly work) identity next to the bound token.
+  const boundAuthor = completeGitAuthor(author)
+  if (!boundAuthor) {
+    return blocked({
+      tool: 'git',
+      account,
+      fixCommand: CONNECTED_ACCOUNTS_GIT_AUTHOR_FIX,
+      reason: 'no commit author is set for this project'
+    })
+  }
+
   let token: string
   try {
     token = await resolveGhAccountToken(binding, { cwd })
@@ -189,5 +211,5 @@ export async function resolveGhSpawnEnv(args: {
       reason: 'it is not signed in to gh on this machine'
     })
   }
-  return { env: buildBoundGitEnvPatch({ binding, token, author, baseEnv }) }
+  return { env: buildBoundGitEnvPatch({ binding, token, author: boundAuthor, baseEnv }) }
 }
