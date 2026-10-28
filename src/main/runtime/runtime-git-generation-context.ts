@@ -10,6 +10,8 @@ import type { SourceControlAiOperation } from '../../shared/source-control-ai-ty
 import type { CommitMessageAgentRuntimeTarget } from '../text-generation/commit-message-agent-environment'
 import type { CommitMessageGenerationTarget } from '../text-generation/commit-message-text-generation'
 import type { PullRequestLinkedIssueMeta } from '../source-control/pull-request-linked-issue'
+import { resolveConnectedAccountsFetchEnv } from '../connected-accounts/connected-accounts-git-options'
+import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import {
   localGitOptionsForTarget,
   type RuntimeGitCommandHost,
@@ -20,16 +22,29 @@ type PullRequestDraftGitExec = Parameters<typeof getPullRequestDraftContext>[0]
 
 /** Runs the PR draft-context probes on a local target. */
 export function pullRequestDraftGitExec(target: RuntimeGitTarget): PullRequestDraftGitExec {
-  return (argv, options) =>
-    gitExecFileAsync(argv, {
+  let fetchEnv: Promise<NodeJS.ProcessEnv | undefined> | undefined
+  // Only the base fetch talks to the remote; it uses the bound account when it resolves (best-effort).
+  const envForFetch = (): Promise<NodeJS.ProcessEnv | undefined> =>
+    target.executionHostId === LOCAL_EXECUTION_HOST_ID
+      ? (fetchEnv ??= resolveConnectedAccountsFetchEnv(
+          target.repo,
+          target.worktree.path,
+          localGitOptionsForTarget(target).wslDistro
+        ))
+      : Promise.resolve(undefined)
+  return async (argv, options) => {
+    const env = argv[0] === 'fetch' ? await envForFetch() : undefined
+    return gitExecFileAsync(argv, {
       cwd: target.worktree.path,
       ...localGitOptionsForTarget(target),
+      ...(env ? { env } : {}),
       ...(options?.maxBuffer === undefined ? {} : { maxBuffer: options.maxBuffer }),
       ...(options?.timeoutMs === undefined && options?.timeout === undefined
         ? {}
         : { timeout: options?.timeoutMs ?? options?.timeout }),
       admissionTier: 'interactive'
     })
+  }
 }
 
 export type RuntimeCommitMessageSettingsOverride = Partial<

@@ -186,7 +186,7 @@ export async function resolveGhSpawnEnv(args: {
       tool: 'github',
       account,
       fixCommand: `gh auth login --hostname ${binding.host}`,
-      reason: `GitHub account ${account} is not signed in to gh on this machine`
+      reason: 'it is not signed in to gh on this machine'
     })
   }
   return { env: buildBoundGitEnvPatch({ binding, token, author, baseEnv }) }

@@ -13,6 +13,7 @@ import { SshHostNotServedError } from '../providers/ssh-host-not-served-error'
 import type { CommitMessageAgentEnvironmentResolvers } from '../text-generation/commit-message-agent-environment'
 import type { PullRequestLinkedIssueMeta } from '../source-control/pull-request-linked-issue'
 import { normalizeRuntimeRelativePath } from './runtime-relative-paths'
+import { resolveConnectedAccountsGitOptions } from '../connected-accounts/connected-accounts-git-options'
 
 export type ResolvedRuntimeGitWorktree = Worktree & { git: GitWorktreeInfo }
 
@@ -75,6 +76,29 @@ export function requireRuntimeGitProvider(target: RuntimeGitTarget): LocalGitPro
     ...localGitOptionsForTarget(target),
     getSharedLinkPaths: () => (target.repo ? getWorktreeSharedLinkPaths(target.repo) : [])
   })
+}
+
+/** Push/pull/fetch/commit: also pins the repo's bound GitHub account; rejects before git when unresolvable. */
+export async function requireRuntimeGitProviderWithConnectedAccounts(
+  target: RuntimeGitTarget
+): Promise<LocalGitProvider> {
+  const route = requireLocalRuntimeGitRoute(target)
+  const options = await localGitOptionsWithConnectedAccountsForTarget(target)
+  return route.createProvider({
+    ...options,
+    getSharedLinkPaths: () => (target.repo ? getWorktreeSharedLinkPaths(target.repo) : [])
+  })
+}
+
+/** Local targets only: remote hosts never inherit this machine's account env. */
+export async function localGitOptionsWithConnectedAccountsForTarget(
+  target: RuntimeGitTarget
+): Promise<GitRuntimeOptions> {
+  const options = localGitOptionsForTarget(target)
+  if (target.executionHostId !== LOCAL_EXECUTION_HOST_ID) {
+    return options
+  }
+  return resolveConnectedAccountsGitOptions(target.repo, target.worktree.path, options)
 }
 
 export function localGitOptionsForTarget(target: RuntimeGitTarget): GitRuntimeOptions {

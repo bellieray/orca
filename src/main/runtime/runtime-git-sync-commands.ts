@@ -6,6 +6,7 @@ import type { LocalGitProvider } from '../providers/local-git-provider'
 import {
   localGitOptionsForTarget,
   requireRuntimeGitProvider,
+  requireRuntimeGitProviderWithConnectedAccounts,
   type RuntimeGitCommandHost,
   type RuntimeGitTarget
 } from './runtime-git-command-target'
@@ -18,7 +19,7 @@ export class RuntimeGitSyncCommands {
     target: RuntimeGitTarget,
     pushTarget: GitPushTarget | undefined
   ): Promise<{ provider: LocalGitProvider; pushTarget: GitPushTarget | undefined }> {
-    const provider = requireRuntimeGitProvider(target)
+    const provider = await requireRuntimeGitProviderWithConnectedAccounts(target)
     const materialized = pushTarget
       ? await materializeWorktreePushTargetRemote(
           target.worktree.path,
@@ -69,10 +70,8 @@ export class RuntimeGitSyncCommands {
     expectedUpstream: GitForkSyncExpectedUpstream
   ): Promise<GitForkSyncResult> {
     const target = await this.host.resolveRuntimeGitTarget(worktreeSelector)
-    return requireRuntimeGitProvider(target).syncForkDefaultBranch(
-      target.worktree.path,
-      expectedUpstream
-    )
+    const provider = await requireRuntimeGitProviderWithConnectedAccounts(target)
+    return provider.syncForkDefaultBranch(target.worktree.path, expectedUpstream)
   }
 
   async pullRuntimeGit(
@@ -97,7 +96,8 @@ export class RuntimeGitSyncCommands {
 
   async rebaseRuntimeGitFromBase(worktreeSelector: string, baseRef: string): Promise<{ ok: true }> {
     const target = await this.host.resolveRuntimeGitTarget(worktreeSelector)
-    await requireRuntimeGitProvider(target).rebaseFromBase(target.worktree.path, baseRef)
+    const provider = await requireRuntimeGitProviderWithConnectedAccounts(target)
+    await provider.rebaseFromBase(target.worktree.path, baseRef)
     return { ok: true }
   }
 
@@ -123,6 +123,7 @@ export class RuntimeGitSyncCommands {
       throw new Error('Commit message is required')
     }
     const target = await this.host.resolveRuntimeGitTarget(worktreeSelector)
-    return requireRuntimeGitProvider(target).commit(target.worktree.path, message)
+    const provider = await requireRuntimeGitProviderWithConnectedAccounts(target)
+    return provider.commit(target.worktree.path, message)
   }
 }

@@ -9,15 +9,11 @@ import {
 } from '../git/local-repo-ref-maintenance'
 import { gitExecFileAsync } from '../git/runner'
 import { setBoundedMapEntry } from './runtime-async-boundaries'
+import { remoteFetchEnvOptions, type RemoteFetchEnvResolver } from './runtime-remote-fetch-env'
 
-export type RemoteFetchResult = { ok: true } | { ok: false; errorKind: 'git_error' }
+import type { RemoteFetchResult, RemoteTrackingBase } from './runtime-remote-fetch-types'
 
-export type RemoteTrackingBase = {
-  remote: string
-  branch: string
-  ref: string
-  base: string
-}
+export type { RemoteFetchResult, RemoteTrackingBase } from './runtime-remote-fetch-types'
 
 type GitOptions = LocalGitExecOptions
 
@@ -33,6 +29,8 @@ export class RuntimeRemoteFetchController {
   private readonly remoteFetchQueueTail = new Map<string, Promise<RemoteFetchResult>>()
   private readonly fetchLastCompletedAt = new Map<string, number>()
   private readonly canonicalFetchKeyCache = new Map<string, string>()
+
+  constructor(private readonly resolveFetchEnv?: RemoteFetchEnvResolver) {}
 
   /** `${runtimeKey}::${gitCommonDir}` -- one repo on one execution host. */
   async getCanonicalRepoKey(
@@ -120,10 +118,11 @@ export class RuntimeRemoteFetchController {
     if (existing) {
       return existing
     }
-    const promise = this.enqueueRemoteFetch(key, () =>
+    const promise = this.enqueueRemoteFetch(key, async () =>
       gitExecFileAsync(['fetch', remote], {
         cwd: repoPath,
         ...gitOptions,
+        ...(await remoteFetchEnvOptions(this.resolveFetchEnv, repoPath, gitOptions)),
         timeout: REMOTE_FETCH_TIMEOUT_MS
       })
         .then((): RemoteFetchResult => {
@@ -221,7 +220,7 @@ export class RuntimeRemoteFetchController {
     }
   }
 
-  private runExactBaseRefresh(
+  private async runExactBaseRefresh(
     repoPath: string,
     base: RemoteTrackingBase,
     key: string,
@@ -239,6 +238,7 @@ export class RuntimeRemoteFetchController {
       {
         cwd: repoPath,
         ...gitOptions,
+        ...(await remoteFetchEnvOptions(this.resolveFetchEnv, repoPath, gitOptions)),
         useConfiguredSshCommandForNetwork: true,
         timeout
       }

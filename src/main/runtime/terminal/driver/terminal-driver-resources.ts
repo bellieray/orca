@@ -8,6 +8,7 @@ import type { BrowserNetworkExecutionHost } from '../../../../shared/browser-net
 import type { BrowserWindow } from 'electron'
 import type { BrowserSessionTabSelectionOptions } from '../../browser-tab-create-publication'
 import type { RuntimeStore } from '../../runtime-store-contract'
+import { resolveConnectedAccountsFetchEnvForPath } from '../../../ipc/local-worktree-runtime-options'
 import type { PtyLivenessVerdict } from '../../../../shared/pty-liveness-verdict'
 import type {
   RuntimeTerminalClose,
@@ -281,7 +282,10 @@ export abstract class OrcaRuntimeWithTerminalDrivers extends OrcaRuntimeWithFitO
   protected stats: StatsCollector | null = null
 
   // Why: create and drift probes must share one fetch/freshness owner.
-  protected readonly remoteFetches = new RuntimeRemoteFetchController()
+  // Background fetches use the project's bound GitHub account when it resolves (best-effort).
+  protected readonly remoteFetches = new RuntimeRemoteFetchController((repoPath, gitOptions) =>
+    resolveConnectedAccountsFetchEnvForPath(this.store, repoPath, gitOptions.wslDistro)
+  )
 
   protected readonly worktreeBaseReconciliation = new RuntimeWorktreeBaseReconciliation(
     this.remoteFetches,

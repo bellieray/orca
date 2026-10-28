@@ -133,7 +133,7 @@ describe('resolveConnectedAccountsSpawnEnv', () => {
         tool: 'github',
         account: 'me@github.com',
         fixCommand: 'gh auth login --hostname github.com',
-        reason: 'GitHub account me@github.com is not signed in to gh on this machine'
+        reason: 'it is not signed in to gh on this machine'
       }
     })
     const result = await resolve(bound)
@@ -141,7 +141,7 @@ describe('resolveConnectedAccountsSpawnEnv', () => {
     const error = formatConnectedAccountsLaunchError(result.unresolved)
     expect(error.code).toBe('connected_accounts_unresolved')
     expect(error.message).toBe(
-      'GitHub account me@github.com is not available: GitHub account me@github.com is not signed in to gh on this machine. Fix: gh auth login --hostname github.com'
+      'GitHub account me@github.com is not available: it is not signed in to gh on this machine. Fix: gh auth login --hostname github.com'
     )
   })
 

@@ -13,7 +13,11 @@ import { getPullRequestDraftContext } from '../../text-generation/pull-request-c
 import { prepareLocalCommitMessageAgentEnv } from '../../text-generation/commit-message-agent-environment'
 import { SSH_HOST_NOT_SERVED_MESSAGE } from '../../providers/ssh-host-not-served-error'
 import { resolveRegisteredWorktreePath } from '../registered-worktree-roots-cache'
-import { getLocalGitOptionsForRegisteredWorktree } from '../local-worktree-runtime-options'
+import {
+  getLocalGitOptionsForRegisteredWorktree,
+  getLocalRepoForRegisteredWorktree
+} from '../local-worktree-runtime-options'
+import { resolveConnectedAccountsFetchEnv } from '../../connected-accounts/connected-accounts-git-options'
 import { gitExecFileAsync } from '../../git/runner'
 import { withLinkedIssueDraftContext } from '../../../shared/source-control-ai-action-variables'
 import { resolveSourceControlAiLinkedIssueMeta } from '../source-control-ai-linked-issue'
@@ -98,11 +102,20 @@ export function registerFilesystemGitPullRequestGenerationHandlers(
           provider: args.provider,
           useTemplate: args.useTemplate
         })
+        let fetchEnv: Promise<NodeJS.ProcessEnv | undefined> | undefined
+        // Only the base fetch talks to the remote; best-effort bound account, never blocks generation.
+        const envForFetch = (): Promise<NodeJS.ProcessEnv | undefined> =>
+          (fetchEnv ??= resolveConnectedAccountsFetchEnv(
+            getLocalRepoForRegisteredWorktree(store, args.worktreePath, worktreePath),
+            worktreePath,
+            gitOptions.wslDistro
+          ))
         context = await getPullRequestDraftContext(
-          (argv, options) =>
+          async (argv, options) =>
             gitExecFileAsync(argv, {
               cwd: worktreePath,
               ...gitOptions,
+              ...(argv[0] === 'fetch' ? await envForFetchAsEnv(envForFetch) : {}),
               ...(options?.maxBuffer === undefined ? {} : { maxBuffer: options.maxBuffer }),
               ...(options?.timeoutMs === undefined && options?.timeout === undefined
                 ? {}
@@ -156,4 +169,11 @@ export function registerFilesystemGitPullRequestGenerationHandlers(
       cancelGeneratePullRequestFieldsLocal(worktreePath)
     }
   )
+}
+
+async function envForFetchAsEnv(
+  resolve: () => Promise<NodeJS.ProcessEnv | undefined>
+): Promise<{ env?: NodeJS.ProcessEnv }> {
+  const env = await resolve()
+  return env ? { env } : {}
 }

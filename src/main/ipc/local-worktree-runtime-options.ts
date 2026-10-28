@@ -6,11 +6,10 @@ import {
 } from '../project-runtime-git-options'
 import { splitWorktreeId } from '../../shared/worktree/id'
 import type { Repo } from '../../shared/repo-types'
-import { resolveGhSpawnEnv } from '../connected-accounts/connected-accounts-git-env'
 import {
-  connectedAccountsApplyToRepo,
-  formatConnectedAccountsLaunchError
-} from '../connected-accounts/connected-accounts-spawn-env'
+  resolveConnectedAccountsFetchEnv,
+  resolveConnectedAccountsGitOptions
+} from '../connected-accounts/connected-accounts-git-options'
 
 function comparableLocalPath(value: string): string {
   const normalized = resolve(value)
@@ -95,16 +94,6 @@ export type LocalWorktreeGitOptionsWithConnectedAccounts = LocalProjectWorktreeG
   env?: NodeJS.ProcessEnv
 }
 
-function processEnvStrings(): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (typeof value === 'string') {
-      env[key] = value
-    }
-  }
-  return env
-}
-
 /**
  * For Orca's own push/pull/fetch/commit: adds the project's bound GitHub account and git author.
  * Unbound, WSL or remote repos get exactly the plain options (no `env`), so their git runs unchanged.
@@ -119,20 +108,22 @@ export async function getLocalGitOptionsForRegisteredWorktreeWithConnectedAccoun
     return {}
   }
   const repo = getLocalRepoForRegisteredWorktree(store, worktreePath, resolvedWorktreePath)
-  const options = getLocalGitOptionsForRepo(store, repo)
-  if (!connectedAccountsApplyToRepo(repo) || !repo.ghAccount || options.wslDistro) {
-    return options
+  return resolveConnectedAccountsGitOptions(
+    repo,
+    resolvedWorktreePath,
+    getLocalGitOptionsForRepo(store, repo)
+  )
+}
+
+/** Best-effort bound env for a background fetch of a registered local repo/worktree path; never throws. */
+export async function resolveConnectedAccountsFetchEnvForPath(
+  store: RuntimeStore | null | undefined,
+  repoPath: string,
+  wslDistro?: string
+): Promise<NodeJS.ProcessEnv | undefined> {
+  if (!store) {
+    return undefined
   }
-  const baseEnv = processEnvStrings()
-  const gh = await resolveGhSpawnEnv({
-    binding: repo.ghAccount,
-    author: repo.connectedAccounts?.gitAuthor,
-    cwd: resolvedWorktreePath,
-    baseEnv
-  })
-  if ('unresolved' in gh) {
-    throw formatConnectedAccountsLaunchError([gh.unresolved])
-  }
-  // GIT_CONFIG_* indices were computed against this same base, so merge onto it, not a bare patch.
-  return { ...options, env: { ...baseEnv, ...gh.env } }
+  const repo = getLocalRepoForRegisteredWorktree(store, repoPath, repoPath)
+  return resolveConnectedAccountsFetchEnv(repo, repoPath, wslDistro)
 }

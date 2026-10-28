@@ -131,7 +131,7 @@ describe('connected accounts at spawn', () => {
         tool: 'github',
         account: 'me@github.com',
         fixCommand: 'gh auth login --hostname github.com',
-        reason: 'GitHub account me@github.com is not signed in to gh on this machine'
+        reason: 'it is not signed in to gh on this machine'
       }
     })
   }

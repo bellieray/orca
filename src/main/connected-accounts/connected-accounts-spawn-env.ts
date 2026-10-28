@@ -44,7 +44,14 @@ const TOOL_LABELS: Record<ConnectedAccountsUnresolved['tool'], string> = {
 const EMPTY: ConnectedAccountsSpawnEnv = { env: {}, unresolved: [], fingerprint: null }
 
 /** Local, git-backed repos only; WSL/SSH/runtime-host/folder repos stay on machine defaults in v1. */
-export function connectedAccountsApplyToRepo(repo: Repo | undefined): repo is Repo {
+export type ConnectedAccountsRoutingRepo = Pick<
+  Repo,
+  'path' | 'kind' | 'connectionId' | 'executionHostId'
+>
+
+export function connectedAccountsApplyToRepo<T extends ConnectedAccountsRoutingRepo>(
+  repo: T | undefined
+): repo is T {
   if (!repo || isFolderRepo(repo)) {
     return false
   }

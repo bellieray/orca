@@ -234,7 +234,7 @@ describe('getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts', () => {
         WT
       )
     ).rejects.toThrow(
-      'GitHub account octo-personal@github.com is not available: GitHub account octo-personal@github.com is not signed in to gh on this machine. Fix: gh auth login --hostname github.com'
+      'GitHub account octo-personal@github.com is not available: it is not signed in to gh on this machine. Fix: gh auth login --hostname github.com'
     )
     expect(networkGitCalls()).toEqual([])
   })
