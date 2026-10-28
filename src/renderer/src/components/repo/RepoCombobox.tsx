@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useAppStore } from '@/store'
+import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
 import { searchRepos } from '@/lib/repo-search'
 import { cn } from '@/lib/utils'
@@ -59,7 +60,16 @@ export default function RepoCombobox({
     () => repos.find((repo) => repo.id === value) ?? null,
     [repos, value]
   )
-  const filteredRepos = useMemo(() => searchRepos(repos, query), [repos, query])
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
+  // Hidden projects stay out of the list; the current selection is kept so its trigger still resolves.
+  const listedRepos = useMemo(
+    () =>
+      concealedRepoIds.length === 0
+        ? repos
+        : repos.filter((repo) => repo.id === value || !concealedRepoIds.includes(repo.id)),
+    [repos, value, concealedRepoIds]
+  )
+  const filteredRepos = useMemo(() => searchRepos(listedRepos, query), [listedRepos, query])
 
   const cancelFocusFrame = useCallback((): void => {
     if (focusFrameRef.current !== null) {

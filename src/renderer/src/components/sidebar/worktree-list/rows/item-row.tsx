@@ -26,6 +26,8 @@ import type { WorktreeRowDragState } from '../drag/row-state'
 
 export type WorktreeItemRowContext = {
   settings: AppState['settings']
+  /** Hidden projects shown while revealed; their cards render dimmed like their headers. */
+  dimmedRepoIds: readonly string[]
   groupBy: WorktreeGroupBy
   folderBackedProjectGroupIds: ReadonlySet<string>
   groupKeyByRowKey: ReadonlyMap<string, string>
@@ -142,6 +144,8 @@ export function renderWorktreeItemRow(
       className={cn(
         // Why: don't transition 'transform' — it lags/flashes when TanStack Virtual repositions adjacent rows.
         'relative transition-[opacity,filter] duration-150 ease-out',
+        // Nested lineage children inherit the parent's dimming; dimming them again would compound.
+        !nested && ctx.dimmedRepoIds.includes(itemRow.worktree.repoId) && 'opacity-60',
         ctx.worktreeDragState.draggingWorktreeId === itemRow.worktree.id &&
           // Why: the fixed drag preview is the affordance; a translucent source row would bleed through sticky headers/footers.
           'pointer-events-none opacity-0'

@@ -37,6 +37,8 @@ function setState(overrides: Record<string, unknown> = {}): void {
   mocks.state = {
     repos: REPOS,
     filterRepoIds: [],
+    hiddenRepoIds: [],
+    revealHiddenRepos: false,
     setFilterRepoIds,
     ...overrides
   }

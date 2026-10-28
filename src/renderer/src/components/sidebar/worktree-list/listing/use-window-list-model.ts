@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { withoutConcealedRepos } from '../../hidden-repo-visibility'
+import { withoutConcealedProjectGroups } from '../../../../../../shared/sidebar-list/concealed-project-groups'
 import type { SidebarListModel, SidebarListModelArgs } from './sidebar-list-model'
 import { useSidebarExternalWorktreeCards } from './use-external-worktree-cards'
 import { useSidebarHostVisibleScope } from './use-host-visible-scope'
@@ -37,9 +38,17 @@ export function useWindowSidebarListModel(args: SidebarListModelArgs): SidebarLi
       visibleReposForRows: withoutConcealedRepos(
         hostVisibleScope.visibleReposForRows,
         filterState.hiddenRepoIds
+      ),
+      visibleProjectGroupsForRows: withoutConcealedProjectGroups(
+        hostVisibleScope.visibleProjectGroupsForRows,
+        {
+          repos,
+          folderWorkspaces: hostVisibleScope.visibleFolderWorkspacesForRows,
+          hiddenRepoIds: filterState.hiddenRepoIds
+        }
       )
     }),
-    [hostVisibleScope, filterState.hiddenRepoIds]
+    [hostVisibleScope, repos, filterState.hiddenRepoIds]
   )
   const externalWorktreeCards = useSidebarExternalWorktreeCards({
     repos,

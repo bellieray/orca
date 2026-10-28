@@ -1,3 +1,4 @@
+import { withoutConcealedProjectGroups } from './concealed-project-groups'
 import {
   ALL_EXECUTION_HOSTS_SCOPE,
   getWorktreeExecutionHostId,
@@ -204,10 +205,9 @@ export function planSidebarFeedRows(
         pairedDeviceIdsByEnvironment
       )
     : hostVisibleFolderWorkspaces
-  const visibleProjectGroups = filterProjectGroupsForVisibleHosts(
-    projectGroups,
-    visibleHostIdSet,
-    defaultHostId
+  const visibleProjectGroups = withoutConcealedProjectGroups(
+    filterProjectGroupsForVisibleHosts(projectGroups, visibleHostIdSet, defaultHostId),
+    { repos, folderWorkspaces: visibleFolderWorkspaces, hiddenRepoIds: view.filters.hiddenRepoIds }
   )
   const listed = new Set(workspaces.map((entry) => entry.worktree.id))
   const pendingCreations = [...domains.creations].flatMap(([creationId, creation]) =>

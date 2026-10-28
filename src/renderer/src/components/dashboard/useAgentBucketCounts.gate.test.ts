@@ -157,4 +157,22 @@ describe('agent bucket count input gate', () => {
       expect(inputs[key], key).toBe(state[key])
     }
   })
+
+  it('leaves concealed projects out of the counted repos until revealed', () => {
+    const shown = { id: 'shown' }
+    const hidden = { id: 'hidden' }
+    const state = {
+      ...storeState(),
+      repos: [shown, hidden],
+      hiddenRepoIds: ['hidden'],
+      revealHiddenRepos: false
+    } as unknown as AppState
+    const concealed = selectAgentBucketCountState(state)
+    expect(concealed.repos).toEqual([shown])
+    // Unrelated writes keep the filtered repos identity, so the gate still holds.
+    expect(selectAgentBucketCountState({ ...state } as unknown as AppState)).toBe(concealed)
+
+    const revealed = { ...state, revealHiddenRepos: true } as unknown as AppState
+    expect(selectAgentBucketCountState(revealed).repos).toBe(state.repos)
+  })
 })

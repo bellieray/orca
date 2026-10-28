@@ -7,6 +7,7 @@ import {
   createDashboardBucketCountsCache
 } from './build-dashboard-bucket-counts'
 import { selectFolderWorkspaces, selectWorktreesByRepo } from '@/store/workspace-record-selectors'
+import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 
 export type AgentBucketCounts = Record<DashboardBucket, number>
 
@@ -39,13 +40,37 @@ let previousState: AgentBucketCountState | null = null
 /** Test-only: drop the cross-render identity gate so a case starts cold. */
 export function resetAgentBucketCountStateForTests(): void {
   previousState = null
+  countedReposMemo = null
+}
+
+let countedReposMemo: {
+  repos: AppState['repos']
+  concealedRepoIds: readonly string[]
+  counted: AppState['repos']
+} | null = null
+
+/** Concealed projects stay out of the bell/Agents counts; memoized so the identity gate holds. */
+function selectCountedRepos(s: AppState): AppState['repos'] {
+  // Partial test stores omit the hidden-project slice; treat that as nothing hidden.
+  const concealedRepoIds: readonly string[] | undefined = selectConcealedRepoIds(s)
+  if (!concealedRepoIds || concealedRepoIds.length === 0) {
+    return s.repos
+  }
+  const memo = countedReposMemo
+  if (memo && memo.repos === s.repos && memo.concealedRepoIds === concealedRepoIds) {
+    return memo.counted
+  }
+  const counted = s.repos.filter((repo) => !concealedRepoIds.includes(repo.id))
+  countedReposMemo = { repos: s.repos, concealedRepoIds, counted }
+  return counted
 }
 
 export function selectAgentBucketCountState(s: AppState): AgentBucketCountState {
   const previous = previousState
+  const repos = selectCountedRepos(s)
   if (
     previous !== null &&
-    previous.repos === s.repos &&
+    previous.repos === repos &&
     selectWorktreesByRepo(previous) === selectWorktreesByRepo(s) &&
     previous.tabsByWorktree === s.tabsByWorktree &&
     previous.unifiedTabsByWorktree === s.unifiedTabsByWorktree &&
@@ -64,7 +89,7 @@ export function selectAgentBucketCountState(s: AppState): AgentBucketCountState 
     return previous
   }
   previousState = {
-    repos: s.repos,
+    repos,
     worktreesByRepo: selectWorktreesByRepo(s),
     tabsByWorktree: s.tabsByWorktree,
     unifiedTabsByWorktree: s.unifiedTabsByWorktree,

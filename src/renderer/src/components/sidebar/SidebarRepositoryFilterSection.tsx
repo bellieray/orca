@@ -6,6 +6,7 @@ import {
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import { SidebarProjectFilterPanel } from './SidebarProjectFilterPanel'
+import { selectConcealedRepoIds } from './hidden-repo-visibility'
 import type { Repo } from '../../../../shared/repo-types'
 import { translate } from '@/i18n/i18n'
 
@@ -67,9 +68,14 @@ const SidebarRepositoryFilterSection = React.memo(function SidebarRepositoryFilt
     () => repos.filter((repo) => selectedRepoIdSet.has(repo.id)),
     [repos, selectedRepoIdSet]
   )
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
+  // Selected ones stay listed so a hidden project already in the filter can still be cleared.
   const availableRepos = useMemo(
-    () => repos.filter((repo) => !selectedRepoIdSet.has(repo.id)),
-    [repos, selectedRepoIdSet]
+    () =>
+      repos.filter(
+        (repo) => !selectedRepoIdSet.has(repo.id) && !concealedRepoIds.includes(repo.id)
+      ),
+    [repos, selectedRepoIdSet, concealedRepoIds]
   )
   const visibilityLabel = getProjectFilterVisibilityLabel({ selectedCount, selectedRepos })
 

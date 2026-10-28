@@ -113,6 +113,7 @@ export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtual
     },
     item: {
       settings: args.settings,
+      dimmedRepoIds: args.dimmedRepoIds,
       groupBy: props.groupBy,
       folderBackedProjectGroupIds: args.folderBackedProjectGroupIds,
       groupKeyByRowKey: session.groupKeyByRowKey,
