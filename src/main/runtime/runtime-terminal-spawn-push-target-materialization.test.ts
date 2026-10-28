@@ -4,12 +4,18 @@ import type { Repo } from '../../shared/repo-types'
 import type { Store } from '../persistence'
 import { hostWorktreeTarget } from '../../shared/worktree/host-qualified-identity'
 
-const { materializeLocalMock, getLocalProjectWorktreeGitOptionsMock } = vi.hoisted(() => ({
-  materializeLocalMock: vi.fn(),
-  getLocalProjectWorktreeGitOptionsMock: vi.fn()
-}))
+const { materializeLocalMock, getLocalProjectWorktreeGitOptionsMock, fetchEnvMock } = vi.hoisted(
+  () => ({
+    materializeLocalMock: vi.fn(),
+    getLocalProjectWorktreeGitOptionsMock: vi.fn(),
+    fetchEnvMock: vi.fn()
+  })
+)
 vi.mock('../ipc/worktree-remote', () => ({
   materializeWorktreePushTargetRemote: materializeLocalMock
+}))
+vi.mock('../connected-accounts/connected-accounts-git-options', () => ({
+  resolveConnectedAccountsFetchEnv: fetchEnvMock
 }))
 vi.mock('../project-runtime-git-options', () => ({
   getLocalProjectWorktreeGitOptions: getLocalProjectWorktreeGitOptionsMock
@@ -42,6 +48,7 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
   beforeEach(() => {
     materializeLocalMock.mockReset().mockResolvedValue(undefined)
     getLocalProjectWorktreeGitOptionsMock.mockReset().mockReturnValue({})
+    fetchEnvMock.mockReset().mockResolvedValue(undefined)
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   })
 
@@ -74,7 +81,7 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
     expect(materializeLocalMock).not.toHaveBeenCalled()
   })
 
-  it('materializes over the local transport with resolved WSL git options, repoId and worktreeId, fire-and-forget', () => {
+  it('materializes over the local transport with resolved WSL git options, repoId and worktreeId, fire-and-forget', async () => {
     getLocalProjectWorktreeGitOptionsMock.mockReturnValue({ wslDistro: 'Ubuntu' })
     const target = forkTarget()
     const result = triggerTerminalSpawnPushTargetMaterialization(
@@ -86,6 +93,7 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
       'worktree-1'
     )
     expect(result).toBeUndefined()
+    await flush()
     expect(getLocalProjectWorktreeGitOptionsMock).toHaveBeenCalledWith(STORE, LOCAL_REPO)
     expect(materializeLocalMock).toHaveBeenCalledWith(
       WORKTREE_PATH,
@@ -106,7 +114,7 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
     expect(getLocalProjectWorktreeGitOptionsMock).not.toHaveBeenCalled()
   })
 
-  it("records on a server's own runtime-stamped row, whose git runs here", () => {
+  it("records on a server's own runtime-stamped row, whose git runs here", async () => {
     const serverRow: Repo = { ...LOCAL_REPO, executionHostId: 'runtime:env-1' }
     triggerTerminalSpawnPushTargetMaterialization(
       WORKTREE_PATH,
@@ -116,16 +124,18 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
       REPO_ID,
       'worktree-1'
     )
+    await flush()
     expect(materializeLocalMock.mock.calls[0]?.[5]).toEqual(
       hostWorktreeTarget({ id: 'worktree-1', hostId: 'runtime:env-1' })
     )
   })
 
-  it('falls back to default git options when WSL project runtime resolution throws', () => {
+  it('falls back to default git options when WSL project runtime resolution throws', async () => {
     getLocalProjectWorktreeGitOptionsMock.mockImplementation(() => {
       throw new Error('repair-required')
     })
     triggerTerminalSpawnPushTargetMaterialization(WORKTREE_PATH, forkTarget(), LOCAL_REPO, STORE)
+    await flush()
     expect(materializeLocalMock).toHaveBeenCalledWith(
       WORKTREE_PATH,
       forkTarget(),
@@ -138,6 +148,15 @@ describe('triggerTerminalSpawnPushTargetMaterialization', () => {
       expect.stringContaining('failed to resolve local git options'),
       expect.any(Error)
     )
+  })
+
+  it("fetches the fork with the project's connected-accounts env", async () => {
+    const env = { PATH: '/bin', GH_TOKEN: 'orca-connected-accounts-unresolved' }
+    fetchEnvMock.mockResolvedValue(env)
+    triggerTerminalSpawnPushTargetMaterialization(WORKTREE_PATH, forkTarget(), LOCAL_REPO, STORE)
+    await flush()
+    expect(fetchEnvMock).toHaveBeenCalledWith(LOCAL_REPO, WORKTREE_PATH, undefined)
+    expect(materializeLocalMock.mock.calls[0]?.[4]).toEqual({ env })
   })
 
   it('swallows a materialize rejection instead of crashing the caller', async () => {

@@ -173,7 +173,12 @@ describe('structured chat naming runtime', () => {
     record.location.workspaceKind = 'folder'
     expect(await state.deps.generate(record, 'Repair login')).toEqual({ name: 'Login repair' })
     expect(state.runtime.resolveWorkspace).toHaveBeenCalledWith(record.location.workspaceId)
-    expect(mocks.target).toHaveBeenCalledWith('/workspace/folder', 'codex', state.runtime)
+    expect(mocks.target).toHaveBeenCalledWith(
+      '/workspace/folder',
+      'codex',
+      state.runtime,
+      undefined
+    )
   })
 
   it.each(['ssh', 'wsl'])(

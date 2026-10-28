@@ -189,7 +189,8 @@ async function prepareAgentEnv(
       const override = accounts.claudeOverride
       const preparation = await withConnectedAccountsClaudeRefusal(
         override ? (accounts.claudeLabel ?? override.accountId) : null,
-        () => prepare(target, override)
+        // Unbound keeps the pre-binding call shape so default routing is unchanged.
+        () => (override ? prepare(target, override) : prepare(target))
       )
       const env = applyClaudeEnvPatch({ ...base }, preparation.envPatch)
       return { ok: true, env }
