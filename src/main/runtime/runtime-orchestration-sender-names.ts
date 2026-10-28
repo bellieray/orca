@@ -71,11 +71,16 @@ export class RuntimeOrchestrationSenderNames {
       address,
       this.deps.getDb(),
       (party, reported) => this.nameOf(party, reported),
-      reportedDispatchId
+      reportedDispatchId,
+      taskName
     )
   }
 
-  nameOf(party: AgentMessageSender['party'], reportedDispatchId?: string): string | null {
+  nameOf(
+    party: AgentMessageSender['party'],
+    reportedDispatchId?: string,
+    taskName?: string | null
+  ): string | null {
     return orchestrationSenderName(
       party,
       {
@@ -90,7 +95,8 @@ export class RuntimeOrchestrationSenderNames {
         terminal: (handle) => this.terminalNaming(handle),
         generatedTitlesEnabled: this.deps.getGeneratedTitlesEnabled()
       },
-      reportedDispatchId
+      reportedDispatchId,
+      taskName
     )
   }
 

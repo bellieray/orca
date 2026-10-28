@@ -1,3 +1,4 @@
+import { NativeChatAgentReference } from './native-chat-agent-reference'
 import { createNativeChatPastedTextHistory } from './native-chat-pasted-text-history'
 import { resolveNativeChatPastedText } from './native-chat-composer-pasted-text-references'
 import { NativeChatPastedTextScopeProvider } from './native-chat-pasted-text-state'
@@ -86,6 +87,7 @@ export function NativeChatPromptEditor({
           underline: false,
           trailingNode: false
         }),
+        NativeChatAgentReference,
         NativeChatSkill,
         NativeChatFileReference,
         NativeChatImageReference,
@@ -180,6 +182,17 @@ export function NativeChatPromptEditor({
     () =>
       editor
         ? {
+            insertAgentReferences: (references) => {
+              if (!editor.isEditable) {
+                return
+              }
+              editor.commands.insertContent(
+                references.flatMap((attrs) => [
+                  { type: NativeChatAgentReference.name, attrs },
+                  { type: 'text', text: ' ' }
+                ])
+              )
+            },
             insertText: (text) => {
               const content = editor.schema.nodeFromJSON(promptTextContent(text))
               editor.view.dispatch(
