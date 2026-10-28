@@ -964,8 +964,8 @@
     "keywordFirebase": "firebase",
     "keywordGithub": "github",
     "keywordRevenueCat": "revenuecat",
-    "staleSessions_one": "{{count}} running session in this project still uses the previous accounts. Restart it to apply.",
-    "staleSessions_other": "{{count}} running sessions in this project still use the previous accounts. Restart them to apply."
+    "staleSessions_one": "{{count}} running session in this project started with the previous accounts: its next claude run may use the new Claude account, but it keeps the old GitHub token. Restart it to apply.",
+    "staleSessions_other": "{{count}} running sessions in this project started with the previous accounts: their next claude run may use the new Claude account, but they keep the old GitHub token. Restart them to apply."
   },
   "dashboard": {
     "sidebar": {

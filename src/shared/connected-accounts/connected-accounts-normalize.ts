@@ -7,8 +7,18 @@ import type {
 } from './connected-accounts-types'
 
 const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
-const RESERVED_ENV_PREFIXES = ['ORCA_', 'GH_', 'GIT_', 'CLAUDE_']
-const RESERVED_ENV_KEYS = ['PATH', 'HOME', 'CREDENTIALS_DIR', 'PUBLISHER_CODE', 'GITHUB_TOKEN']
+const RESERVED_ENV_PREFIXES = ['ORCA_', 'GH_', 'GIT_', 'CLAUDE_', 'ANTHROPIC_']
+// Each of these can switch an account-bearing tool away from the bound account.
+const RESERVED_ENV_KEYS = [
+  'PATH',
+  'HOME',
+  'CREDENTIALS_DIR',
+  'PUBLISHER_CODE',
+  'GITHUB_TOKEN',
+  'FIREBASE_TOKEN',
+  'GOOGLE_APPLICATION_CREDENTIALS',
+  'XDG_CONFIG_HOME'
+]
 
 export function isValidConnectedAccountsEnvKey(key: string): boolean {
   return ENV_KEY_RE.test(key)

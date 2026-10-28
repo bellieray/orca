@@ -3,11 +3,7 @@ import type { GhAccountBinding } from '../../../../../../shared/github/account-b
 import type { Repo } from '../../../../../../shared/repo-types'
 import type { RepoConnectedAccounts } from '../../../../../../shared/connected-accounts/connected-accounts-types'
 import { normalizeRepoConnectedAccounts } from '../../../../../../shared/connected-accounts/connected-accounts-normalize'
-import {
-  getRepoExecutionHostId,
-  getRepoRoutingConnectionId
-} from '../../../../../../shared/execution-host'
-import { isWslUncPath } from '../../../../../../shared/wsl-paths'
+import { getRepoExecutionHostId } from '../../../../../../shared/execution-host'
 import { Input } from '../../../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../ui/select'
 import { SearchableSetting } from '../../SearchableSetting'
@@ -18,6 +14,12 @@ import { ConnectedAccountsExtraEnvEditor } from './ConnectedAccountsExtraEnvEdit
 import { ConnectedAccountsFirebaseRow } from './ConnectedAccountsFirebaseRow'
 import { ConnectedAccountsRow } from './ConnectedAccountsRow'
 import { connectedAccountsSearchEntry } from './connected-accounts-search'
+import {
+  connectedAccountsBlockedReason,
+  projectRuntimeRunsInWsl
+} from './connected-accounts-blocked-reason'
+import { getLocalRepoProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
+import { Button } from '../../../ui/button'
 import { useAppStore } from '@/store/index'
 import { translate } from '@/i18n/i18n'
 import { readIpcErrorDetail } from '@/lib/ipc-error'
@@ -36,23 +38,6 @@ type RepositoryConnectedAccountsSectionProps = {
   forceVisible?: boolean
 }
 
-/** Mirrors main's connectedAccountsApplyToRepo so the UI never offers a binding spawn would ignore. */
-function connectedAccountsBlockedReason(repo: Repo): string | null {
-  if (getRepoRoutingConnectionId(repo) || getRepoExecutionHostId(repo) !== 'local') {
-    return translate(
-      'connectedAccounts.localOnly',
-      'Account bindings apply to local launches only.'
-    )
-  }
-  if (isWslUncPath(repo.path)) {
-    return translate(
-      'connectedAccounts.wslUnsupported',
-      'Account bindings are not yet supported for WSL projects.'
-    )
-  }
-  return null
-}
-
 export function RepositoryConnectedAccountsSection({
   repo,
   updateRepo,
@@ -62,7 +47,10 @@ export function RepositoryConnectedAccountsSection({
   const updateSettings = useAppStore((state) => state.updateSettings)
   const claudeLabelId = useId()
   const admobLabelId = useId()
-  const blockedReason = connectedAccountsBlockedReason(repo)
+  const runtimeIsWsl = useAppStore((state) =>
+    projectRuntimeRunsInWsl(getLocalRepoProjectExecutionRuntimeContext(state, repo.id))
+  )
+  const blockedReason = connectedAccountsBlockedReason(repo, runtimeIsWsl)
   const disabled = blockedReason !== null
   const bound = repo.connectedAccounts
   const claudeAccounts = settings?.claudeManagedAccounts ?? []
@@ -208,6 +196,16 @@ export function RepositoryConnectedAccountsSection({
           )}
         </p>
         {blockedReason ? <p className="text-xs text-muted-foreground">{blockedReason}</p> : null}
+        {/* Main refuses bound WSL launches, so a blocked project must still be able to drop its bindings. */}
+        {blockedReason && bound ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void Promise.resolve(updateRepo(repo.id, { connectedAccounts: null }))}
+          >
+            {translate('connectedAccounts.clearBindings', 'Clear account bindings')}
+          </Button>
+        ) : null}
       </div>
 
       {staleCount > 0 ? (
@@ -217,7 +215,7 @@ export function RepositoryConnectedAccountsSection({
         >
           {translate(
             'connectedAccounts.staleSessions',
-            '{{count}} running sessions in this project still use the previous accounts. Restart them to apply.',
+            '{{count}} running sessions in this project started with the previous accounts: their next claude run may use the new Claude account, but they keep the old GitHub token. Restart them to apply.',
             { count: staleCount }
           )}
         </div>

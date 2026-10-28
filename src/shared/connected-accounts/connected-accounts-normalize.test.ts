@@ -74,6 +74,15 @@ describe('connected accounts env key rules', () => {
     expect(isReservedConnectedAccountsEnvKey('GITHUB_TOKEN', 'linux')).toBe(true)
     expect(isReservedConnectedAccountsEnvKey('home', 'linux')).toBe(false)
     expect(isReservedConnectedAccountsEnvKey('home', 'win32')).toBe(true)
+    for (const key of [
+      'FIREBASE_TOKEN',
+      'GOOGLE_APPLICATION_CREDENTIALS',
+      'XDG_CONFIG_HOME',
+      'ANTHROPIC_API_KEY'
+    ]) {
+      expect(isReservedConnectedAccountsEnvKey(key, 'linux')).toBe(true)
+    }
+    expect(isReservedConnectedAccountsEnvKey('anthropic_api_key', 'win32')).toBe(true)
   })
 })
 
