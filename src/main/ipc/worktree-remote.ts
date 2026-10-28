@@ -41,6 +41,7 @@ import { getHostedReviewForBranch } from '../source-control/hosted-review'
 import type { ForgeProviderId } from '../source-control/forge-provider'
 import { validateGitPushTarget } from '../git/push-target-validation'
 import { gitExecFileAsync } from '../git/runner'
+import { resolveConnectedAccountsFetchEnv } from '../connected-accounts/connected-accounts-git-options'
 import type {
   OrcaRuntimeService,
   RemoteFetchResult,
@@ -676,7 +677,8 @@ export async function materializeWorktreePushTargetRemote(
   target: GitPushTarget,
   store?: WorktreePushTargetStore | null,
   repoId?: string,
-  gitOptions: { wslDistro?: string } = {},
+  /** Carries the bound account env (`...WithConnectedAccounts` options): its fork fetches hit the network. */
+  gitOptions: { wslDistro?: string; env?: NodeJS.ProcessEnv } = {},
   worktree?: HostWorktreeTarget
 ): Promise<GitPushTarget> {
   if (!target.remoteUrl || target.remoteCreated) {
@@ -740,7 +742,7 @@ async function adoptExistingForkRemoteForBranch(
   execGit: GitRemoteExec,
   repoPath: string,
   target: GitPushTarget,
-  gitOptions: { wslDistro?: string },
+  gitOptions: { wslDistro?: string; env?: NodeJS.ProcessEnv },
   store: WorktreePushTargetStore | null | undefined,
   repoId: string | undefined,
   worktree: HostWorktreeTarget | undefined
@@ -1109,10 +1111,19 @@ async function performLocalWorktreeCreate(
     }
   } else {
     if (!(await hasLocalWorktreeBaseRef(repo.path, baseBranch, localGitExecOptions))) {
-      legacyFetchPromise = gitExecFileAsync(['fetch', 'origin'], {
-        ...localGitExecOptions,
-        timeout: CREATE_BASE_FALLBACK_FETCH_TIMEOUT_MS
-      })
+      // The project's bound account, or a blocked env; never the machine default.
+      legacyFetchPromise = resolveConnectedAccountsFetchEnv(
+        repo,
+        repo.path,
+        localGitExecOptions.wslDistro
+      )
+        .then((env) =>
+          gitExecFileAsync(['fetch', 'origin'], {
+            ...localGitExecOptions,
+            ...(env ? { env } : {}),
+            timeout: CREATE_BASE_FALLBACK_FETCH_TIMEOUT_MS
+          })
+        )
         .then(() => undefined)
         .catch(() => undefined)
       emitCreateWorktreeProgress(mainWindow, 'fetching', args.creationId)

@@ -1,4 +1,5 @@
 import { materializeWorktreePushTargetRemote } from '../ipc/worktree-remote'
+import { resolveConnectedAccountsFetchEnv } from '../connected-accounts/connected-accounts-git-options'
 import { getLocalProjectWorktreeGitOptions } from '../project-runtime-git-options'
 import type { GitPushTarget } from '../../shared/worktree/types'
 import type { Repo } from '../../shared/repo-types'
@@ -32,19 +33,25 @@ export function triggerTerminalSpawnPushTargetMaterialization(
   ) {
     return
   }
-  materializeWorktreePushTargetRemote(
-    worktreePath,
-    pushTarget,
-    store,
-    repoId,
-    localGitOptionsForTerminalSpawn(store, repo),
-    worktreeId ? hostWorktreeTarget({ id: worktreeId, hostId }) : undefined
-  ).catch((error: unknown) => {
-    console.warn(
-      `[terminal-spawn] failed to materialize push target remote for ${worktreePath}:`,
-      error
+  const gitOptions = localGitOptionsForTerminalSpawn(store, repo)
+  // Its fork fetch hits the network: the project's bound account (or a blocked env), never the default.
+  resolveConnectedAccountsFetchEnv(repo ?? undefined, worktreePath, gitOptions.wslDistro)
+    .then((env) =>
+      materializeWorktreePushTargetRemote(
+        worktreePath,
+        pushTarget,
+        store,
+        repoId,
+        { ...gitOptions, ...(env ? { env } : {}) },
+        worktreeId ? hostWorktreeTarget({ id: worktreeId, hostId }) : undefined
+      )
     )
-  })
+    .catch((error: unknown) => {
+      console.warn(
+        `[terminal-spawn] failed to materialize push target remote for ${worktreePath}:`,
+        error
+      )
+    })
 }
 
 function localGitOptionsForTerminalSpawn(

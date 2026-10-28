@@ -4,7 +4,7 @@ import type { GitPushTarget } from '../../shared/worktree/types'
 import { materializeWorktreePushTargetRemote } from '../ipc/worktree-remote'
 import type { LocalGitProvider } from '../providers/local-git-provider'
 import {
-  localGitOptionsForTarget,
+  localGitOptionsWithConnectedAccountsForTarget,
   requireRuntimeGitProvider,
   requireRuntimeGitProviderWithConnectedAccounts,
   type RuntimeGitCommandHost,
@@ -20,15 +20,18 @@ export class RuntimeGitSyncCommands {
     pushTarget: GitPushTarget | undefined
   ): Promise<{ provider: LocalGitProvider; pushTarget: GitPushTarget | undefined }> {
     const provider = await requireRuntimeGitProviderWithConnectedAccounts(target)
-    const materialized = pushTarget
-      ? await materializeWorktreePushTargetRemote(
-          target.worktree.path,
-          pushTarget,
-          undefined,
-          target.repo?.id,
-          localGitOptionsForTarget(target)
-        )
-      : undefined
+    // Only a not-yet-created fork remote fetches; skip a second account resolution otherwise.
+    const materialized =
+      pushTarget?.remoteUrl && !pushTarget.remoteCreated
+        ? await materializeWorktreePushTargetRemote(
+            target.worktree.path,
+            pushTarget,
+            undefined,
+            target.repo?.id,
+            // Its fork fetch hits the network: same bound account as the push itself.
+            await localGitOptionsWithConnectedAccountsForTarget(target)
+          )
+        : pushTarget
     if (materialized?.remoteCreated) {
       this.host.persistMaterializedPushTarget?.(target.worktree, materialized)
     }
