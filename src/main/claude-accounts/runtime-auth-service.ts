@@ -14,6 +14,7 @@ import {
 } from './claude-profile-installed-router'
 import { ClaudeObservedConfigDirs } from './claude-observed-config-dirs'
 import type { ClaudeAccountSelectionTarget } from './runtime-selection'
+import type { ClaudeRepoAccountOverride } from './claude-profile-repo-pointer'
 import type { ClaudeRuntimeAuthPreparation } from './runtime-auth/runtime-auth-types'
 
 export type { ClaudeRuntimeAuthPreparation } from './runtime-auth/runtime-auth-types'
@@ -47,10 +48,17 @@ export class ClaudeRuntimeAuthService {
   }
 
   prepareForClaudeLaunch(
-    target?: ClaudeAccountSelectionTarget
+    target?: ClaudeAccountSelectionTarget,
+    override?: ClaudeRepoAccountOverride
   ): Promise<ClaudeRuntimeAuthPreparation> {
     const wsl = this.wslRouteFor(target)
-    return wsl ? wsl.router.prepareLaunch(wsl.distro) : this.router.prepareLaunch()
+    if (wsl && override) {
+      // The WSL router has no per-project pointer; refusing beats running the global WSL account.
+      return Promise.reject(
+        new Error('Per-project Claude accounts are not supported for WSL projects yet.')
+      )
+    }
+    return wsl ? wsl.router.prepareLaunch(wsl.distro) : this.router.prepareLaunch(override)
   }
 
   async prepareForRateLimitFetch(

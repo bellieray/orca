@@ -3,6 +3,7 @@ import type { AgentProviderSessionMetadata } from '../../../../shared/agent-sess
 import type { NetworkProxySettings } from '../../../../shared/network-proxy'
 import type { ClaudeRuntimeAuthPreparation } from '../../../claude-accounts/runtime-auth-service'
 import type { ClaudeAccountSelectionTarget } from '../../../claude-accounts/runtime-selection'
+import type { ClaudeRepoAccountOverride } from '../../../claude-accounts/claude-profile-repo-pointer'
 import type { CodexAccountSelectionTarget } from '../../../codex-accounts/runtime-selection'
 import type { CodexPaneHomeRoute } from '../../../codex/codex-pane-account-registry'
 import type { CodexSessionResumePreparation } from '../../../codex/codex-session-resume-home'
@@ -72,5 +73,6 @@ export function allocatePtyLifecycleSequence(): number {
 }
 
 export type PrepareClaudeAuth = (
-  target?: ClaudeAccountSelectionTarget
+  target?: ClaudeAccountSelectionTarget,
+  override?: ClaudeRepoAccountOverride
 ) => Promise<ClaudeRuntimeAuthPreparation>

@@ -1,19 +1,19 @@
-import { getClaudeAgentViewService } from '../claude/agent-view-service'
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { isAgentStatusHooksEnabledForAgent } from '../../shared/agent-status-hooks-setting'
+import { join } from 'node:path'
 import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
   CLAUDE_PROFILE_POINTER_ENV,
-  CLAUDE_PROFILE_SETUP_FAILED_MESSAGE,
   CLAUDE_USER_CONFIG_DIR_ENV
 } from '../../shared/claude-profile-routing'
 import { claudeProfileMissing, claudeProfileSetupFailed } from './claude-profile-launch-errors'
 import type { GlobalSettings } from '../../shared/global-settings-types'
-import { probeRecentClaudeCliVersion } from '../claude/claude-hook-event-versions'
-import { writeFileAtomically } from '../codex-accounts/fs-utils'
-import { resolveClaudeCommand } from '../codex-cli/command'
+import {
+  claudeRepoPointerPath,
+  writeClaudeProfilePointer,
+  writeClaudeRepoPointer,
+  type ClaudeRepoAccountOverride
+} from './claude-profile-repo-pointer'
 import {
   claudeProfileMarkerPath,
   describeClaudeProfile,
@@ -22,8 +22,8 @@ import {
   readUserClaudeConfigDirAsSet,
   resolveClaudeDefaultHome
 } from './claude-profile-paths'
-import type { ClaudeProfileSetupReport } from './claude-profile-setup'
-import { runClaudeProfileSetupInWorker } from './claude-profile-setup-worker'
+import type { runClaudeProfileSetupInWorker } from './claude-profile-setup-worker'
+import { ClaudeProfileSetupQueue } from './claude-profile-setup-queue'
 import type { ClaudeEnvPatch } from './environment'
 import type { ClaudeRuntimeAuthPreparation } from './runtime-auth/runtime-auth-types'
 import {
@@ -56,7 +56,8 @@ export type ClaudeProfileRouterSettings = Pick<
 /** Mirror the settings selection to a pointer file for Claude in existing terminals. */
 export class ClaudeProfileRouter {
   readonly pointerPath: string
-  private readonly setups = new Map<string, Promise<ClaudeProfileSetupReport>>()
+  private readonly setups: ClaudeProfileSetupQueue
+  private readonly repoOverrides = new Map<string, ClaudeRepoAccountOverride>()
   private env: NodeJS.ProcessEnv
   private readonly envReady: Promise<unknown>
   private envResolved: boolean
@@ -82,24 +83,43 @@ export class ClaudeProfileRouter {
           // Recompute routing using the resolved System default.
           try {
             this.writePointer()
+            this.repoOverrides.forEach((override) => this.writeRepoPointer(override))
           } catch (error) {
             console.warn('[claude-profile] Could not update the Claude account pointer:', error)
           }
         })
+    this.setups = new ClaudeProfileSetupQueue({
+      getSettings: args.getSettings,
+      dataRoot: args.dataRoot,
+      userHome: () => this.userHome,
+      userConfigDir: () => this.userConfigDir(),
+      envReady: this.envReady,
+      runSetup: args.runSetup
+    })
   }
 
   private get userHome(): string {
     return this.args.userHome ?? homedir()
   }
 
-  private selectedProfile(): ClaudeProfileDescriptor | null {
-    const id = getSelectedClaudeAccountIdForTarget(this.args.getSettings(), { runtime: 'host' })
+  private profileFor(override?: ClaudeRepoAccountOverride): ClaudeProfileDescriptor | null {
+    // A bound account removed from settings must never fall back to the global selection.
+    if (override && !findClaudeAccount(this.args.getSettings(), override.accountId)) {
+      throw claudeProfileMissing()
+    }
+    const id =
+      override?.accountId ??
+      getSelectedClaudeAccountIdForTarget(this.args.getSettings(), { runtime: 'host' })
     return id ? this.describe(id) : null
   }
 
-  private routedProfile(): ClaudeProfileDescriptor | null {
-    const profile = this.selectedProfile()
+  private routedProfile(override?: ClaudeRepoAccountOverride): ClaudeProfileDescriptor | null {
+    const profile = this.profileFor(override)
     return profile && !this.coveredBySystemDefault(profile.accountId) ? profile : null
+  }
+
+  repoPointerPath(repoId: string): string {
+    return claudeRepoPointerPath(this.args.dataRoot, repoId)
   }
 
   accountLogin(accountId: string): ClaudeFolderLogin | null {
@@ -125,8 +145,8 @@ export class ClaudeProfileRouter {
   }
 
   /** Never fall back from a missing folder: that would run the wrong account. */
-  routedHome(): string | null {
-    const home = this.routedProfile()?.home ?? null
+  routedHome(override?: ClaudeRepoAccountOverride): string | null {
+    const home = this.routedProfile(override)?.home ?? null
     if (home !== null && !isDirectory(home)) {
       throw claudeProfileMissing()
     }
@@ -139,78 +159,76 @@ export class ClaudeProfileRouter {
       return
     }
     // Create missing or covered folders without a login so they can sign in separately.
-    const profile = this.selectedProfile()
+    const profile = this.profileFor()
     if (profile) {
-      this.setUpInBackground(profile)
+      this.setups.setUpInBackground(profile)
     }
   }
 
-  private writePointer(): boolean {
+  private writePointer(override?: ClaudeRepoAccountOverride): boolean {
+    if (override) {
+      this.writeRepoPointer(override)
+      return true
+    }
     if (this.args.getSettings().claudeManagedAccounts.length === 0) {
       rmSync(this.pointerPath, { force: true })
       return false
     }
-    const home = this.routedProfile()?.home ?? ''
-    // Avoid rewriting the pointer on every launch.
-    if (!existsSync(this.pointerPath) || readFileSync(this.pointerPath, 'utf8') !== home) {
-      mkdirSync(dirname(this.pointerPath), { recursive: true, mode: 0o700 })
-      writeFileAtomically(this.pointerPath, home, { mode: 0o600 })
-    }
+    writeClaudeProfilePointer(this.pointerPath, this.routedProfile()?.home ?? '')
     return true
   }
 
-  private setUpInBackground(profile: ClaudeProfileDescriptor): void {
-    this.setUp(profile).catch((error: unknown) => {
-      console.warn('[claude-profile] Account setup failed:', error)
-    })
+  /** Unlike the global pointer, a bound project's pointer is never removed: a missing file means System default. */
+  private writeRepoPointer(override: ClaudeRepoAccountOverride): void {
+    this.repoOverrides.set(override.repoId, override)
+    writeClaudeRepoPointer(this.repoPointerPath(override.repoId), () => this.routedHome(override))
   }
 
   /** Initial setup must succeed; later refreshes may time out without blocking launch. */
-  async prepareLaunch(): Promise<ClaudeRuntimeAuthPreparation> {
-    const selected = this.selectedProfile()
+  async prepareLaunch(override?: ClaudeRepoAccountOverride): Promise<ClaudeRuntimeAuthPreparation> {
+    const selected = this.profileFor(override)
     // Only fallback routing needs the shell env; account setup waits for it separately.
     if (!selected || !this.accountLogin(selected.accountId)) {
       await this.envReady
     }
     // Login changes since publication can change the route.
-    this.writePointer()
-    const profile = this.routedProfile()
+    this.writePointer(override)
+    const profile = this.routedProfile(override)
     if (!profile) {
-      return this.preparation()
+      return this.preparation(override)
+    }
+    // A bound folder is never recreated empty: that would hide a lost login behind a new sign-in.
+    if (override && !isDirectory(profile.home)) {
+      throw claudeProfileMissing()
     }
     // A missing marker means initial setup has not completed.
     if (!existsSync(claudeProfileMarkerPath(profile))) {
-      const report = await this.setUp(profile).catch(() => null)
+      const report = await this.setups.setUp(profile).catch(() => null)
       if (report?.outcome !== 'prepared') {
         throw claudeProfileSetupFailed()
       }
-      return this.preparation()
+      return this.preparation(override)
     }
     // Run with the previous setup if refreshing fails or exceeds the deadline.
-    const refresh = this.setUp(profile).catch((error: unknown) => {
+    const refresh = this.setups.setUp(profile).catch((error: unknown) => {
       console.warn('[claude-profile] Account refresh failed:', error)
     })
     const waitMs = this.args.refreshWaitMs ?? REFRESH_WAIT_MS
     await Promise.race([refresh, new Promise((resolve) => setTimeout(resolve, waitMs).unref())])
-    return this.preparation()
+    return this.preparation(override)
   }
 
   accountHome(accountId: string): string {
     return this.describe(accountId).home
   }
 
-  async prepareAccount(accountId: string): Promise<string> {
-    const profile = this.describe(accountId)
-    const report = await this.setUp(profile).catch(() => null)
-    if (report?.outcome !== 'prepared') {
-      throw new Error(CLAUDE_PROFILE_SETUP_FAILED_MESSAGE)
-    }
-    return profile.home
+  prepareAccount(accountId: string): Promise<string> {
+    return this.setups.prepare(this.describe(accountId))
   }
 
   /** Wait for setup before deleting so it cannot recreate the folder. */
   async removeAccount(accountId: string): Promise<void> {
-    await this.setups.get(accountId)?.catch(() => {})
+    await this.setups.settled(accountId)
     await removeClaudeAccountFolder(this.args.dataRoot, accountId)
   }
 
@@ -230,49 +248,22 @@ export class ClaudeProfileRouter {
     })
   }
 
-  /** Reuse in-flight setup per account. */
-  private setUp(profile: ClaudeProfileDescriptor): Promise<ClaudeProfileSetupReport> {
-    const running = this.setups.get(profile.accountId)
-    if (running) {
-      return running
-    }
-    const run = this.runSetup(profile).finally(() => this.setups.delete(profile.accountId))
-    this.setups.set(profile.accountId, run)
-    return run
-  }
-
-  private async runSetup(profile: ClaudeProfileDescriptor): Promise<ClaudeProfileSetupReport> {
-    await this.envReady
-    const hooks = isAgentStatusHooksEnabledForAgent(this.args.getSettings(), 'claude')
-    const claudeVersion = hooks ? await probeRecentClaudeCliVersion(resolveClaudeCommand()) : null
-    const report = await (this.args.runSetup ?? runClaudeProfileSetupInWorker)({
-      dataRoot: this.args.dataRoot,
-      profile,
-      userHome: this.userHome,
-      userConfigDir: this.userConfigDir(),
-      hooks,
-      claudeVersion: claudeVersion ?? undefined
-    })
-    if (report.outcome === 'prepared') {
-      await getClaudeAgentViewService(this.args.dataRoot).prepareProfile(profile.home)
-    }
-    if (report.outcome === 'refused' || report.warnings.length > 0) {
-      console.warn('[claude-profile] Account setup was incomplete:', report)
-    }
-    return report
-  }
-
-  launchEnv(): ClaudeEnvPatch {
-    const home = this.routedHome()
+  launchEnv(override?: ClaudeRepoAccountOverride): ClaudeEnvPatch {
+    const home = this.routedHome(override)
     return {
-      [CLAUDE_PROFILE_POINTER_ENV]: this.pointerPath,
+      [CLAUDE_PROFILE_POINTER_ENV]: override
+        ? this.repoPointerPath(override.repoId)
+        : this.pointerPath,
       // Preserve the user's inherited CLAUDE_CONFIG_DIR for System default.
       ...(home ? { CLAUDE_CONFIG_DIR: home, [CLAUDE_INJECTED_CONFIG_DIR_ENV]: home } : {})
     }
   }
 
   /** A broken account selection must not prevent opening a terminal. */
-  terminalEnv(target?: ClaudeAccountSelectionTarget): ClaudeEnvPatch {
+  terminalEnv(
+    target?: ClaudeAccountSelectionTarget,
+    override?: ClaudeRepoAccountOverride
+  ): ClaudeEnvPatch {
     // Pass the pointer without waiting on the guest.
     if (target?.runtime === 'wsl') {
       return { [CLAUDE_PROFILE_POINTER_ENV]: `~/${wslClaudeProfilePointer(this.args.dataRoot)}` }
@@ -280,42 +271,48 @@ export class ClaudeProfileRouter {
     // Save the user's value so the shell function can restore it on System default.
     const userConfigDir = readUserClaudeConfigDirAsSet(this.env)
     const base: ClaudeEnvPatch = {
-      [CLAUDE_PROFILE_POINTER_ENV]: this.pointerPath,
+      [CLAUDE_PROFILE_POINTER_ENV]: override
+        ? this.repoPointerPath(override.repoId)
+        : this.pointerPath,
       ...(userConfigDir ? { [CLAUDE_USER_CONFIG_DIR_ENV]: userConfigDir } : {})
+    }
+    if (override) {
+      // Written before returning, even pre-resolve: the shell reads a missing pointer as System default.
+      this.writeRepoPointer(override)
     }
     // Defer routing until the shell env resolves; the shell function will read the updated pointer.
     if (!this.envResolved) {
       return base
     }
     try {
-      this.writePointer()
+      this.writePointer(override)
       // Refresh without delaying terminal creation.
-      const profile = this.routedProfile()
+      const profile = this.routedProfile(override)
       if (profile) {
-        this.setUpInBackground(profile)
+        this.setups.setUpInBackground(profile)
       }
-      return { ...base, ...this.launchEnv() }
+      return { ...base, ...this.launchEnv(override) }
     } catch {
       return base
     }
   }
 
-  preparation(): ClaudeRuntimeAuthPreparation {
-    const profile = this.routedProfile()
-    const home = this.routedHome()
+  preparation(override?: ClaudeRepoAccountOverride): ClaudeRuntimeAuthPreparation {
+    const profile = this.routedProfile(override)
+    const home = this.routedHome(override)
     return {
       configDir: home ?? this.systemDefaultHome(),
       runtime: 'host',
       wslDistro: null,
       wslLinuxConfigDir: null,
-      envPatch: this.launchEnv(),
+      envPatch: this.launchEnv(override),
       provenance: home ? `profile:${profile?.accountId}` : 'system'
     }
   }
 
   /** Compare pre-routing terminals against the selection; null means no account is selected. */
   systemDefaultRunsAnotherAccount(): boolean | null {
-    const profile = this.selectedProfile()
+    const profile = this.profileFor()
     if (!profile) {
       return null
     }

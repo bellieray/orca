@@ -552,6 +552,91 @@ describe('ClaudeProfileRouter', () => {
     }
   )
 
+  it('repo override writes its own pointer and leaves the global pointer alone', () => {
+    const f = fixture()
+    mkdirSync(f.home('a'), { recursive: true })
+    mkdirSync(f.home('b'), { recursive: true })
+    f.router.publish()
+    const env = f.router.terminalEnv(undefined, { repoId: 'r1', accountId: 'b' })
+    expect(env.ORCA_CLAUDE_PROFILE_POINTER).toBe(f.router.repoPointerPath('r1'))
+    expect(env).toMatchObject({ CLAUDE_CONFIG_DIR: f.home('b') })
+    expect(readFileSync(f.router.repoPointerPath('r1'), 'utf8')).toBe(f.home('b'))
+    expect(readFileSync(f.router.pointerPath, 'utf8')).toBe(f.home('a'))
+  })
+
+  it('prepareLaunch with override routes CLAUDE_CONFIG_DIR to the bound account', async () => {
+    const f = fixture()
+    mkdirSync(f.home('b'), { recursive: true })
+    writeFileSync(join(f.home('b'), '..', 'profile.json'), '{}')
+    const launch = f.router.prepareLaunch({ repoId: 'r1', accountId: 'b' })
+    await vi.waitFor(() => expect(f.setup.calls).toBe(1))
+    f.setup.settle()
+    const prepared = await launch
+    expect(prepared.envPatch.CLAUDE_CONFIG_DIR).toBe(f.home('b'))
+    expect(prepared.provenance).toBe('profile:b')
+    expect(existsSync(f.router.pointerPath)).toBe(false)
+  })
+
+  it('unknown override account refuses the agent launch', async () => {
+    const f = fixture()
+    mkdirSync(f.home('a'), { recursive: true })
+    await expect(f.router.prepareLaunch({ repoId: 'r1', accountId: 'gone' })).rejects.toThrow(
+      CLAUDE_PROFILE_MISSING_MESSAGE
+    )
+    // A known account whose folder vanished is refused too, never set up under the global one.
+    await expect(f.router.prepareLaunch({ repoId: 'r1', accountId: 'b' })).rejects.toThrow(
+      CLAUDE_PROFILE_MISSING_MESSAGE
+    )
+    expect(f.setup.calls).toBe(0)
+  })
+
+  it('unknown override account blocks terminal claude', () => {
+    const f = fixture({ CLAUDE_CONFIG_DIR: resolve('/user/own') })
+    mkdirSync(f.home('a'), { recursive: true })
+    const env = f.router.terminalEnv(undefined, { repoId: 'r1', accountId: 'gone' })
+    expect(env).toEqual({
+      ORCA_CLAUDE_PROFILE_POINTER: f.router.repoPointerPath('r1'),
+      ORCA_CLAUDE_USER_CONFIG_DIR: resolve('/user/own')
+    })
+    expect(readFileSync(f.router.repoPointerPath('r1'), 'utf8')).toBe('!unbound')
+    f.settings.claudeManagedAccounts = []
+    f.router.terminalEnv(undefined, { repoId: 'r2', accountId: 'a' })
+    expect(readFileSync(f.router.repoPointerPath('r2'), 'utf8')).toBe('!unbound')
+  })
+
+  it('writes a bound pane pointer before the login shell env arrives', () => {
+    shell.hang = true
+    const f = fixture()
+    const router = new ClaudeProfileRouter({
+      getSettings: () => f.settings,
+      dataRoot: f.dataRoot,
+      userHome: f.userHome
+    })
+    const env = router.terminalEnv(undefined, { repoId: 'r1', accountId: 'gone' })
+    expect(env).toEqual({ ORCA_CLAUDE_PROFILE_POINTER: router.repoPointerPath('r1') })
+    expect(readFileSync(router.repoPointerPath('r1'), 'utf8')).toBe('!unbound')
+  })
+
+  it.skipIf(process.platform === 'win32')(
+    'fails terminal claude for an unbound pane even when the rc exports the user’s own value',
+    () => {
+      const own = resolve('/user/own')
+      const f = fixture({ CLAUDE_CONFIG_DIR: own })
+      const claude = claudeShellProbe(f.root)
+      const pane = {
+        CLAUDE_CONFIG_DIR: own,
+        ...f.router.terminalEnv(undefined, { repoId: 'r1', accountId: 'gone' })
+      }
+      expect(claude(pane)).toBe('')
+      const run = spawnSync(
+        '/bin/bash',
+        ['--norc', '--noprofile', '-c', `${getPosixClaudeShellFunction()}\nclaude`],
+        { env: { ...pane, PATH: `${join(f.root, 'bin')}:/usr/bin:/bin` }, encoding: 'utf8' }
+      )
+      expect(run.status).toBe(1)
+    }
+  )
+
   it('lists history under the CLAUDE_CONFIG_DIR only the login shell exports', () => {
     const configDir = join(tmpdir(), `claude-router-own-${process.pid}`)
     roots.push(configDir)
