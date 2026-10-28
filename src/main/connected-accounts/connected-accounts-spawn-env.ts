@@ -2,6 +2,7 @@
 // Tokens only ever live in `env`: never log, persist or hash it (the fingerprint reads bindings only).
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
+import { getRepoRoutingConnectionId } from '../../shared/execution-host'
 import { isFolderRepo } from '../../shared/repo-kind'
 import type { Repo } from '../../shared/repo-types'
 import type { GlobalSettings } from '../../shared/global-settings-types'
@@ -55,7 +56,7 @@ export function connectedAccountsApplyToRepo<T extends ConnectedAccountsRoutingR
   if (!repo || isFolderRepo(repo)) {
     return false
   }
-  if (repo.connectionId) {
+  if (getRepoRoutingConnectionId(repo)) {
     return false
   }
   if (repo.executionHostId && repo.executionHostId !== 'local') {
