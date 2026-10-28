@@ -1,9 +1,6 @@
 // Applies a project's Connected Accounts at PTY spawn: agents are refused on an unresolved
 // binding; plain terminals open with a warning and the broken tool's env blocked (never the default).
-import {
-  getClaudeProfileRouter,
-  withClaudeProfileTerminalEnv
-} from '../../claude-accounts/claude-profile-installed-router'
+import { withClaudeProfileTerminalEnv } from '../../claude-accounts/claude-profile-installed-router'
 import { CLAUDE_REPO_POINTER_UNBOUND } from '../../claude-accounts/claude-profile-repo-pointer'
 import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/runtime-selection'
 import type { ClaudeRuntimeAuthPreparation } from '../../claude-accounts/runtime-auth-service'
@@ -15,6 +12,10 @@ import {
   resolveConnectedAccountsSpawnEnv
 } from '../../connected-accounts/connected-accounts-spawn-env'
 import type { ConnectedAccountsUnresolved } from '../../connected-accounts/connected-accounts-static-env'
+import {
+  claudeBoundFolderMissing,
+  withConnectedAccountsClaudeRefusal
+} from '../../connected-accounts/connected-accounts-agent-launch'
 import { recordConnectedAccountsPane } from '../../connected-accounts/connected-accounts-pane-registry'
 import type { Store } from '../../persistence'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
@@ -42,12 +43,6 @@ function processEnvStrings(): Record<string, string> {
   return env
 }
 
-function claudeFolderMissing(error: unknown): boolean {
-  return (
-    error instanceof Error && 'reason' in error && error.reason === 'claudeAccountFolderMissing'
-  )
-}
-
 /** Replaces `withClaudeProfileTerminalEnv` + `prepareClaudeAuth` in both spawn preflights. */
 export async function prepareConnectedAccountsSpawn(input: {
   env: Record<string, string> | undefined
@@ -67,7 +62,7 @@ export async function prepareConnectedAccountsSpawn(input: {
     repoId && input.settings && getConnectionExecutionHostId(input.connectionId) === 'local'
       ? input.store?.getRepo?.(repoId)
       : undefined
-  // WSL runtimes are left on machine defaults, so no WSLENV forwarding is needed in v1.
+  // A bound WSL runtime comes back unresolved: v1 has no WSLENV forwarding to pin the guest.
   const resolved = input.settings
     ? await resolveConnectedAccountsSpawnEnv({
         repo,
@@ -86,15 +81,10 @@ export async function prepareConnectedAccountsSpawn(input: {
   const env = Object.keys(resolved.env).length > 0 ? { ...claudeEnv, ...resolved.env } : claudeEnv
   const claudeLabel = override ? claudeBoundAccountLabel(input.settings!, override.accountId) : ''
   if (override && !unresolved.some((entry) => entry.tool === 'claude')) {
-    let folderMissing = env?.[CLAUDE_PROFILE_POINTER_ENV] === CLAUDE_REPO_POINTER_UNBOUND
-    if (!folderMissing) {
-      try {
-        getClaudeProfileRouter()?.routedHome(override)
-      } catch {
-        folderMissing = true
-      }
-    }
-    if (folderMissing) {
+    if (
+      env?.[CLAUDE_PROFILE_POINTER_ENV] === CLAUDE_REPO_POINTER_UNBOUND ||
+      claudeBoundFolderMissing(override)
+    ) {
       unresolved.push(
         claudeAccountMissingUnresolved(claudeLabel, "the account's sign-in folder is missing")
       )
@@ -112,16 +102,10 @@ export async function prepareConnectedAccountsSpawn(input: {
       if (!input.isClaudeLaunch || !input.prepareClaudeAuth) {
         return null
       }
-      try {
-        return await input.prepareClaudeAuth(target, override)
-      } catch (error) {
-        if (override && claudeFolderMissing(error)) {
-          throw formatConnectedAccountsLaunchError([
-            claudeAccountMissingUnresolved(claudeLabel, "the account's sign-in folder is missing")
-          ])
-        }
-        throw error
-      }
+      const prepare = input.prepareClaudeAuth
+      return withConnectedAccountsClaudeRefusal(override ? claudeLabel : null, () =>
+        prepare(target, override)
+      )
     }
   }
 }

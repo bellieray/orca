@@ -107,6 +107,7 @@ export type RuntimeStore = {
     nativeChatAutoName?: GlobalSettings['nativeChatAutoName']
     notifications?: GlobalSettings['notifications']
     claudeManagedAccounts?: GlobalSettings['claudeManagedAccounts']
+    connectedAccountsAdmobProfiles?: GlobalSettings['connectedAccountsAdmobProfiles']
     activeClaudeManagedAccountId?: GlobalSettings['activeClaudeManagedAccountId']
     activeClaudeManagedAccountIdsByRuntime?: GlobalSettings['activeClaudeManagedAccountIdsByRuntime']
     activeCodexManagedAccountId?: GlobalSettings['activeCodexManagedAccountId']

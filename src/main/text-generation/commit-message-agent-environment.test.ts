@@ -334,3 +334,69 @@ describe('prepareLocalCommitMessageAgentEnv', () => {
     })
   })
 })
+
+describe('prepareLocalCommitMessageAgentEnv with Connected Accounts', () => {
+  const preparation = {
+    configDir: '/accounts/personal',
+    runtime: 'host' as const,
+    wslDistro: null,
+    wslLinuxConfigDir: null,
+    envPatch: { CLAUDE_CONFIG_DIR: '/accounts/personal' },
+    provenance: 'profile:personal'
+  }
+  const override = { repoId: 'repo-1', accountId: 'personal' }
+
+  it('launches Claude on the bound account and adds the bound tool env', async () => {
+    const prepareForClaudeLaunch = vi.fn().mockResolvedValue(preparation)
+    const result = await prepareLocalCommitMessageAgentEnv(
+      'claude',
+      { prepareForClaudeLaunch, resolveBaseEnvironment: async () => ({ PATH: '/bin' }) },
+      { runtime: 'host' },
+      async () => ({ env: { GH_TOKEN: 'gho_bound' }, claudeOverride: override })
+    )
+    expect(prepareForClaudeLaunch).toHaveBeenCalledWith({ runtime: 'host' }, override)
+    expect(result).toEqual({
+      ok: true,
+      env: { PATH: '/bin', CLAUDE_CONFIG_DIR: '/accounts/personal', GH_TOKEN: 'gho_bound' }
+    })
+  })
+
+  it('refuses with the binding text instead of using the machine account', async () => {
+    const prepareForClaudeLaunch = vi.fn()
+    const refusal = Object.assign(
+      new Error('GitHub account octo@github.com is not available: x. Fix: y'),
+      { code: 'connected_accounts_unresolved' }
+    )
+    const result = await prepareLocalCommitMessageAgentEnv(
+      'claude',
+      { prepareForClaudeLaunch, resolveBaseEnvironment: async () => ({}) },
+      { runtime: 'host' },
+      async () => {
+        throw refusal
+      }
+    )
+    expect(result).toEqual({ ok: false, error: refusal.message })
+    expect(prepareForClaudeLaunch).not.toHaveBeenCalled()
+  })
+
+  it('a missing bound Claude folder is reported as the binding refusal', async () => {
+    const missing = Object.assign(new Error('folder missing'), {
+      reason: 'claudeAccountFolderMissing'
+    })
+    const result = await prepareLocalCommitMessageAgentEnv(
+      'claude',
+      {
+        prepareForClaudeLaunch: vi.fn().mockRejectedValue(missing),
+        resolveBaseEnvironment: async () => ({})
+      },
+      { runtime: 'host' },
+      async () => ({ env: {}, claudeOverride: override, claudeLabel: 'me@example.com' })
+    )
+    expect(result).toEqual({
+      ok: false,
+      error: expect.stringContaining(
+        "Claude account me@example.com is not available: the account's sign-in folder is missing"
+      )
+    })
+  })
+})

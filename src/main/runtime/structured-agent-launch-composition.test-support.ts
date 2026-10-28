@@ -45,6 +45,7 @@ export type LaunchTestSources = {
   resolveCommandSettings?: () => StructuredAgentCommandSettings
   prepareVisuals?: PrepareNativeChatVisuals
   refreshAfterMissingProgram?: (askedAt: number) => Promise<void>
+  resolveConnectedAccounts?: StructuredAgentLaunchSources['resolveConnectedAccounts']
 }
 
 function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
@@ -90,6 +91,9 @@ function launchSources(deps: LaunchTestSources): StructuredAgentLaunchSources {
     ...(deps.prepareVisuals ? { prepareVisuals: deps.prepareVisuals } : {}),
     ...(deps.refreshAfterMissingProgram
       ? { refreshAfterMissingProgram: deps.refreshAfterMissingProgram }
+      : {}),
+    ...(deps.resolveConnectedAccounts
+      ? { resolveConnectedAccounts: deps.resolveConnectedAccounts }
       : {})
   }
 }

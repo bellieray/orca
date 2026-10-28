@@ -1,20 +1,22 @@
 import { join } from 'node:path'
 import type { ClaudeProfileRouter } from '../claude-accounts/claude-profile-router'
+import type { ClaudeRepoAccountOverride } from '../claude-accounts/claude-profile-repo-pointer'
 import { applyClaudeEnvPatch } from '../claude-accounts/environment'
 import { AgentSessionPreSpawnError } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
 import { resolveSessionFilePath } from '../native-chat/session-file-resolver'
 import { resolveStructuredClaudeAccountHomePath } from '../runtime/structured-agent-account-home'
 
-/** Follow the current account selection and pin its environment for this launch. */
+/** Follow the current (or the project's bound) account selection and pin its environment for this launch. */
 export async function resolveClaudeStructuredLaunchHome(
-  router: ClaudeProfileRouter | undefined,
+  router: Pick<ClaudeProfileRouter, 'prepareLaunch' | 'systemDefaultHome'> | undefined,
   env: Record<string, string>,
-  recordHome: string
+  recordHome: string,
+  override?: ClaudeRepoAccountOverride
 ): Promise<string> {
   if (!router) {
     return recordHome
   }
-  const preparation = await router.prepareLaunch()
+  const preparation = await router.prepareLaunch(override)
   // Read before patching: System default preserves the launch environment's CLAUDE_CONFIG_DIR.
   const launchHome =
     preparation.provenance === 'system'

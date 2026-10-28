@@ -1,4 +1,5 @@
 import { resolveStructuredCodexAccountKind } from '../structured-agent-account-home'
+import { structuredAgentConnectedAccountsDeps } from '../structured-agent-connected-accounts'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/structured-agent-session-registry'
 import { collectRuntimeWorktreeAgentSources } from '../runtime-worktree-agent-sources'
 import { OrcaRuntimeWithWorktreePsDependencies } from './workspace-process-listing-dependencies'
@@ -274,6 +275,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
           ? this.structuredAgentLaunchEnv(agent, this.requireStore().getSettings())
           : {},
       resolveAgentCommandSettings: () => this.requireStore().getSettings(),
+      ...structuredAgentConnectedAccountsDeps(() => this.requireStore()),
       resolveCodexAccountKind: (home) =>
         resolveStructuredCodexAccountKind(home, this.requireStore().getSettings()),
       resolveAgentAccountHome: (agent) => this.resolveStructuredAgentAccountHome(agent),

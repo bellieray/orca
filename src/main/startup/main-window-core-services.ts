@@ -80,7 +80,8 @@ export function attachMainWindowCoreServices(
     automations,
     {
       prepareForCodexLaunch: prepareCodexRuntimeHomeForLaunch,
-      prepareForClaudeLaunch: (target) => claudeRuntimeAuth.prepareForClaudeLaunch(target),
+      prepareForClaudeLaunch: (target, override) =>
+        claudeRuntimeAuth.prepareForClaudeLaunch(target, override),
       resolveBaseEnvironment: () => resolveHostAgentBaseEnvironment(store.getSettings())
     },
     state.agentAwakeService ?? undefined,

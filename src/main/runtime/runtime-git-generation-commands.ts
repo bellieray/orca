@@ -26,6 +26,7 @@ import {
   type RuntimeGitCommandHost
 } from './runtime-git-command-target'
 import {
+  connectedAccountsLaunchForTarget,
   getRuntimeGitGenerationSettings,
   linkedIssueForTarget,
   linkedIssueMetaForTarget,
@@ -84,7 +85,8 @@ export class RuntimeGitGenerationCommands {
     const localEnv = await prepareLocalCommitMessageAgentEnv(
       resolvedSettings.params.agentId,
       this.host.getCommitMessageAgentEnvironment?.(),
-      localAgentRuntimeTargetForTarget(target)
+      localAgentRuntimeTargetForTarget(target),
+      connectedAccountsLaunchForTarget(this.host, target)
     )
     if (!localEnv.ok) {
       return { success: false, error: localEnv.error }
@@ -187,7 +189,8 @@ export class RuntimeGitGenerationCommands {
     const localEnv = await prepareLocalCommitMessageAgentEnv(
       resolvedSettings.params.agentId,
       this.host.getCommitMessageAgentEnvironment?.(),
-      localAgentRuntimeTargetForTarget(target)
+      localAgentRuntimeTargetForTarget(target),
+      connectedAccountsLaunchForTarget(this.host, target)
     )
     if (!localEnv.ok) {
       return { success: false, error: localEnv.error }

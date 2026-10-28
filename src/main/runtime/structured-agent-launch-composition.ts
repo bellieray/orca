@@ -16,6 +16,10 @@ import { resolveAgentSessionLaunchDirectory } from './agent-session-launch-direc
 import type { AgentSessionRecordStore } from './agent-session-record-store'
 import type { StructuredAgentAdapterContext } from './structured-agent-runtime-registrations'
 import { sealStructuredSessionChild } from './structured-session-child-env'
+import {
+  CONNECTED_ACCOUNTS_NO_LAUNCH,
+  type ConnectedAccountsAgentLaunch
+} from '../connected-accounts/connected-accounts-agent-launch'
 
 /** Where a launch's shared inputs come from. */
 export type StructuredAgentLaunchSources = {
@@ -34,6 +38,11 @@ export type StructuredAgentLaunchSources = {
   /** Rereads the base environment after a lookup that started at `askedAt` found no program in
    *  it; absent never retries. */
   refreshAfterMissingProgram?: (askedAt: number) => Promise<void>
+  /** The project's Connected Accounts; throws (pre-spawn) when a binding cannot be resolved. */
+  resolveConnectedAccounts?: (
+    record: AgentSessionRecord,
+    baseEnv: Record<string, string>
+  ) => Promise<ConnectedAccountsAgentLaunch>
 }
 
 /** Resolve each input lazily once in agent-defined order; refusals before directory reads leave floating records unpinned. */
@@ -53,6 +62,8 @@ export type StructuredAgentLaunchBasis = {
   refreshAfterMissingProgram?: (askedAt: number) => Promise<void>
   /** The permission mode the host decided this start runs with; absent asks. */
   permissionMode?: AgentChatPermissionChoice
+  /** The project's bound accounts; the composition merges `env` last, agents read only the Claude override. */
+  connectedAccounts(): Promise<ConnectedAccountsAgentLaunch>
 }
 
 export type StructuredLaunchRequest = {
@@ -164,10 +175,21 @@ async function composedPart<L>(
           }
         }
       : {}),
-    ...(permissionMode ? { permissionMode } : {})
+    ...(permissionMode ? { permissionMode } : {}),
+    connectedAccounts: once(async () =>
+      sources.resolveConnectedAccounts
+        ? sources.resolveConnectedAccounts(record, await environments.agent())
+        : CONNECTED_ACCOUNTS_NO_LAUNCH
+    )
   }
+  // Resolve before the part so an unresolved binding refuses before any agent-specific work.
+  const accounts = await basis.connectedAccounts()
   const composed = await part(basis, identity)
-  return { ...composed, cwd: await basis.launchDirectory() }
+  return {
+    ...composed,
+    env: { ...composed.env, ...accounts.env },
+    cwd: await basis.launchDirectory()
+  }
 }
 
 export function composeStructuredLaunch<L>(
@@ -230,6 +252,9 @@ export function structuredAgentLaunchSources(
     resolveAgentEnvironment: context.environment.resolveAgentEnvironment,
     refreshAfterMissingProgram: context.environment.refreshAfterMissingProgram,
     ...(deps.resolveAgentLaunchEnv ? { resolveAgentLaunchEnv: deps.resolveAgentLaunchEnv } : {}),
+    ...(deps.resolveConnectedAccounts
+      ? { resolveConnectedAccounts: deps.resolveConnectedAccounts }
+      : {}),
     ...(deps.resolveAgentCommandSettings
       ? { resolveCommandSettings: deps.resolveAgentCommandSettings }
       : {}),

@@ -240,4 +240,29 @@ describe('getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts', () => {
     )
     expect(networkGitCalls()).toEqual([])
   })
+
+  it('a bound repo still applies to a worktree with no meta row (found via its git common dir)', async () => {
+    resolveGhAccountTokenMock.mockResolvedValue('gho_bound_token')
+    gitExecFileAsyncMock.mockImplementation(async (args: string[]) =>
+      args.includes('--git-common-dir')
+        ? { stdout: '/repos/bound/.git\n', stderr: '' }
+        : { stdout: 'git version 2.45.0\n', stderr: '' }
+    )
+    const options = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
+      makeBindingStore([boundRepo]),
+      '/custom/base/wt-external',
+      '/custom/base/wt-external'
+    )
+    expect(options.env?.GH_TOKEN).toBe('gho_bound_token')
+  })
+
+  it('skips the common-dir lookup when no repo has a binding', async () => {
+    const options = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
+      makeBindingStore([{ id: 'bound', path: '/repos/bound' }]),
+      '/custom/base/wt-external',
+      '/custom/base/wt-external'
+    )
+    expect(options).toEqual({})
+    expect(gitExecFileAsyncMock).not.toHaveBeenCalled()
+  })
 })

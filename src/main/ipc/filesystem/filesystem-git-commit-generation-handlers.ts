@@ -11,7 +11,10 @@ import { getCommitMessageModelDiscoveryHostKey } from '../../../shared/commit-me
 import { getStagedCommitContext } from '../../git/status'
 import { SSH_HOST_NOT_SERVED_MESSAGE } from '../../providers/ssh-host-not-served-error'
 import { resolveRegisteredWorktreePath } from '../registered-worktree-roots-cache'
-import { getLocalGitOptionsForRegisteredWorktree } from '../local-worktree-runtime-options'
+import {
+  connectedAccountsLaunchForWorktree,
+  getLocalGitOptionsForRegisteredWorktree
+} from '../local-worktree-runtime-options'
 import { withLinkedIssueDraftContext } from '../../../shared/source-control-ai-action-variables'
 import { resolveSourceControlAiLinkedIssue } from '../source-control-ai-linked-issue'
 import { prepareLocalCommitMessageAgentEnv } from '../../text-generation/commit-message-agent-environment'
@@ -93,7 +96,8 @@ export function registerFilesystemGitCommitGenerationHandlers(
       const localEnv = await prepareLocalCommitMessageAgentEnv(
         resolvedSettings.params.agentId,
         commitMessageAgentEnv,
-        getLocalAgentRuntimeTarget(gitOptions)
+        getLocalAgentRuntimeTarget(gitOptions),
+        connectedAccountsLaunchForWorktree(store, args.worktreePath, worktreePath)
       )
       if (!localEnv.ok) {
         return { success: false, error: localEnv.error }

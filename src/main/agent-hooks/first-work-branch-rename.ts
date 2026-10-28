@@ -1,4 +1,6 @@
 import type { GlobalSettings } from '../../shared/global-settings-types'
+import { connectedAccountsLaunchResolver } from '../connected-accounts/connected-accounts-agent-launch'
+import type { ConnectedAccountsSettings } from '../connected-accounts/connected-accounts-spawn-env'
 import type { Repo } from '../../shared/repo-types'
 import { isFolderRepo } from '../../shared/repo-kind'
 import { getRepoIdFromWorktreeId, splitWorktreeIdForFilesystem } from '../../shared/worktree/id'
@@ -51,7 +53,8 @@ export type FirstWorkBranchRenameEvent = {
 export type FirstWorkBranchRenameDeps = {
   getSettings: () => Parameters<typeof resolveTextGenerationParams>[0] &
     Parameters<typeof getConfiguredBranchPrefix>[0] &
-    Partial<Pick<GlobalSettings, 'autoRenameBranchFromWork'>>
+    Partial<Pick<GlobalSettings, 'autoRenameBranchFromWork'>> &
+    ConnectedAccountsSettings
   getRepo: (repoId: string) => Repo | undefined
   getAgentEnvResolvers: () => CommitMessageAgentEnvironmentResolvers | undefined
   getCurrentDisplayName: (worktreeId: string) => string | undefined
@@ -229,7 +232,12 @@ async function runAutoRename(
   }
   const params = resolvedParams.params
 
-  const target = await resolveGenerationTarget(worktreePath, params.agentId, deps)
+  const target = await resolveGenerationTarget(
+    worktreePath,
+    params.agentId,
+    deps,
+    connectedAccountsLaunchResolver(repo, worktreePath, settings)
+  )
   if (!target) {
     deps.setRenameError(worktreeId, 'Could not prepare the branch-name generation environment.')
     return retry('could not prepare generation environment')

@@ -12,6 +12,12 @@ import {
   resolveTextGenerationParams
 } from '../text-generation/commit-message-text-generation'
 import { resolveGenerationTarget } from '../agent-hooks/first-work-generation-target'
+import type { ConnectedAccountsSettings } from '../connected-accounts/connected-accounts-spawn-env'
+import type { ConnectedAccountsLaunchResolver } from '../connected-accounts/connected-accounts-agent-launch'
+import {
+  connectedAccountsLaunchForWorkspace,
+  type StructuredAgentConnectedAccountsStore
+} from './structured-agent-connected-accounts'
 
 type StructuredChatNamingRuntime = {
   resolveWorkspace: (
@@ -25,7 +31,10 @@ type StructuredChatNamingRuntime = {
 export function structuredChatNamingDeps(
   getStore: () => {
     getSettings: () => Parameters<typeof resolveTextGenerationParams>[0] &
-      ReturnType<StructuredChatNamingDeps['getSettings']>
+      ReturnType<StructuredChatNamingDeps['getSettings']> &
+      ConnectedAccountsSettings
+    /** The chat workspace's repo decides the accounts the naming agent runs as. */
+    getRepo?: StructuredAgentConnectedAccountsStore['getRepo']
   },
   runtime: StructuredChatNamingRuntime,
   logger: StructuredAgentSessionLogger
@@ -68,7 +77,12 @@ export function structuredChatNamingDeps(
         logger.warn(settings.error, log)
         return { error: settings.error }
       }
-      const target = await resolveGenerationTarget(workspace.path, settings.params.agentId, runtime)
+      const target = await resolveGenerationTarget(
+        workspace.path,
+        settings.params.agentId,
+        runtime,
+        namingConnectedAccounts(getStore(), record.location.workspaceId, workspace.path)
+      )
       if (!target) {
         const error = 'No chat-name agent can run in this workspace.'
         logger.warn(error, log)
@@ -101,4 +115,23 @@ export function structuredChatNamingDeps(
     },
     logger
   }
+}
+
+function namingConnectedAccounts(
+  store: Pick<StructuredAgentConnectedAccountsStore, 'getSettings'> &
+    Partial<Pick<StructuredAgentConnectedAccountsStore, 'getRepo'>>,
+  workspaceId: string,
+  workspacePath: string
+): ConnectedAccountsLaunchResolver | undefined {
+  const { getRepo } = store
+  return getRepo
+    ? connectedAccountsLaunchForWorkspace(
+        {
+          getRepo: (repoId) => getRepo.call(store, repoId),
+          getSettings: () => store.getSettings()
+        },
+        workspaceId,
+        workspacePath
+      )
+    : undefined
 }

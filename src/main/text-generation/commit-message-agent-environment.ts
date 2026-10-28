@@ -2,13 +2,22 @@ import type { ClaudeRuntimeAuthPreparation } from '../claude-accounts/runtime-au
 import { applyClaudeEnvPatch } from '../claude-accounts/environment'
 import { readShellStartupEnvVar } from '../pty/shell-startup-env'
 import { parseWslUncPath } from '../../shared/wsl-paths'
+import type { ClaudeRepoAccountOverride } from '../claude-accounts/claude-profile-repo-pointer'
+import {
+  CONNECTED_ACCOUNTS_NO_LAUNCH,
+  isConnectedAccountsLaunchError,
+  withConnectedAccountsClaudeRefusal,
+  type ConnectedAccountsAgentLaunch,
+  type ConnectedAccountsLaunchResolver
+} from '../connected-accounts/connected-accounts-agent-launch'
 
 export type CommitMessageAgentEnvironmentResolvers = {
   prepareForCodexLaunch?: (
     target?: CommitMessageAgentRuntimeTarget
   ) => string | null | Promise<string | null>
   prepareForClaudeLaunch?: (
-    target?: CommitMessageAgentRuntimeTarget
+    target?: CommitMessageAgentRuntimeTarget,
+    override?: ClaudeRepoAccountOverride
   ) => Promise<ClaudeRuntimeAuthPreparation>
   /** The login-shell base env chats start from; a host-only source, never used for WSL. */
   resolveBaseEnvironment?: () => Promise<Record<string, string>>
@@ -101,13 +110,43 @@ async function resolveHostBaseEnv(
   }
 }
 
+type PreparedAgentEnv = { ok: true; env?: NodeJS.ProcessEnv } | { ok: false; error: string }
+
+/** `connectedAccounts` binds the run to the worktree's project accounts; an unresolved binding refuses it. */
 export async function prepareLocalCommitMessageAgentEnv(
   agentId: string,
   resolvers: CommitMessageAgentEnvironmentResolvers | undefined,
-  target?: CommitMessageAgentRuntimeTarget
-): Promise<{ ok: true; env?: NodeJS.ProcessEnv } | { ok: false; error: string }> {
+  target?: CommitMessageAgentRuntimeTarget,
+  connectedAccounts?: ConnectedAccountsLaunchResolver
+): Promise<PreparedAgentEnv> {
   // Host agents need shell proxies/tokens; WSL resolves them in the guest.
   const hostBase = target?.runtime === 'wsl' ? undefined : await resolveHostBaseEnv(resolvers)
+  let accounts: ConnectedAccountsAgentLaunch = CONNECTED_ACCOUNTS_NO_LAUNCH
+  if (connectedAccounts) {
+    try {
+      accounts = await connectedAccounts(
+        hostBase ?? cloneProcessEnv(),
+        target?.runtime === 'wsl' ? 'wsl' : 'host'
+      )
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  }
+  const prepared = await prepareAgentEnv(agentId, resolvers, target, hostBase, accounts)
+  if (!prepared.ok || Object.keys(accounts.env).length === 0) {
+    return prepared
+  }
+  // Bound tokens go last so the run cannot fall back to the machine's accounts.
+  return { ok: true, env: { ...(prepared.env ?? hostBase ?? cloneProcessEnv()), ...accounts.env } }
+}
+
+async function prepareAgentEnv(
+  agentId: string,
+  resolvers: CommitMessageAgentEnvironmentResolvers | undefined,
+  target: CommitMessageAgentRuntimeTarget | undefined,
+  hostBase: Record<string, string> | undefined,
+  accounts: ConnectedAccountsAgentLaunch
+): Promise<PreparedAgentEnv> {
   // Shell-config agents short-circuit below; never put a Codex/Claude-style resolver agent on this path.
   const shellConfigEnv =
     target?.runtime === 'wsl' ? null : prepareShellConfigDirEnv(agentId, hostBase)
@@ -146,11 +185,19 @@ export async function prepareLocalCommitMessageAgentEnv(
     }
 
     if (agentId === 'claude' && resolvers.prepareForClaudeLaunch) {
-      const preparation = await resolvers.prepareForClaudeLaunch(target)
+      const prepare = resolvers.prepareForClaudeLaunch
+      const override = accounts.claudeOverride
+      const preparation = await withConnectedAccountsClaudeRefusal(
+        override ? (accounts.claudeLabel ?? override.accountId) : null,
+        () => prepare(target, override)
+      )
       const env = applyClaudeEnvPatch({ ...base }, preparation.envPatch)
       return { ok: true, env }
     }
   } catch (error) {
+    if (isConnectedAccountsLaunchError(error)) {
+      return { ok: false, error: error.message }
+    }
     console.error('[commit-message] Failed to prepare agent environment:', error)
     return {
       ok: false,

@@ -13,10 +13,24 @@ import type { PullRequestLinkedIssueMeta } from '../source-control/pull-request-
 import { resolveConnectedAccountsFetchEnv } from '../connected-accounts/connected-accounts-git-options'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import {
+  connectedAccountsLaunchResolver,
+  type ConnectedAccountsLaunchResolver
+} from '../connected-accounts/connected-accounts-agent-launch'
+import {
   localGitOptionsForTarget,
   type RuntimeGitCommandHost,
   type RuntimeGitTarget
 } from './runtime-git-command-target'
+
+/** Remote hosts never inherit this machine's accounts; local targets refuse on an unresolved binding. */
+export function connectedAccountsLaunchForTarget(
+  host: Pick<RuntimeGitCommandHost, 'getRuntimeSettings'>,
+  target: RuntimeGitTarget
+): ConnectedAccountsLaunchResolver | undefined {
+  return target.executionHostId === LOCAL_EXECUTION_HOST_ID
+    ? connectedAccountsLaunchResolver(target.repo, target.worktree.path, host.getRuntimeSettings())
+    : undefined
+}
 
 type PullRequestDraftGitExec = Parameters<typeof getPullRequestDraftContext>[0]
 

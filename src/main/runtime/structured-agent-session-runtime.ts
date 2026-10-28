@@ -30,6 +30,7 @@ import {
 } from '../native-chat/agent-session-wire/structured-agent-session-logger'
 import type { RuntimeAgentAccountHomeResolver } from './structured-agent-model-catalog-wiring'
 import type { ClaudeCliFlagSupport } from '../claude/claude-cli-flag-support'
+import type { StructuredAgentLaunchSources } from './structured-agent-launch-composition'
 import { migrateLegacyNativeChatVisualsFolders } from '../native-chat/native-chat-scratch-folder-migration'
 
 export { hasPersistedStructuredAgentSessionStore } from './agent-session-record-store-slot'
@@ -55,6 +56,8 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
   /** Backfill permission mode once for chats saved before modes existed. */
   resolveAgentFullAccess?: (agent: string) => boolean
   resolveAgentLaunchEnv?: (agent: string) => Record<string, string>
+  /** See `StructuredAgentLaunchSources.resolveConnectedAccounts`. */
+  resolveConnectedAccounts?: StructuredAgentLaunchSources['resolveConnectedAccounts']
   resolveAgentCommandSettings?: () => StructuredAgentCommandSettings
   resolveEnvironment?: () => Promise<NodeJS.ProcessEnv>
   /** Which login-shell variables Codex and Claude children inherit; absent inherits all. */

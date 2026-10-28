@@ -194,7 +194,8 @@ export function configureRuntimeServices(runtime: OrcaRuntimeService): void {
   runtime.setCommitMessageAgentEnvironmentResolvers({
     // Resolve every Codex launch through runtime-home, including default-account hooks/auth.
     prepareForCodexLaunch: prepareCodexRuntimeHomeForLaunch,
-    prepareForClaudeLaunch: (target) => state.claudeRuntimeAuth!.prepareForClaudeLaunch(target),
+    prepareForClaudeLaunch: (target, override) =>
+      state.claudeRuntimeAuth!.prepareForClaudeLaunch(target, override),
     resolveBaseEnvironment: () => resolveHostAgentBaseEnvironment(store.getSettings())
   })
 }

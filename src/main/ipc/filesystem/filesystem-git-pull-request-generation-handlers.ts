@@ -14,6 +14,7 @@ import { prepareLocalCommitMessageAgentEnv } from '../../text-generation/commit-
 import { SSH_HOST_NOT_SERVED_MESSAGE } from '../../providers/ssh-host-not-served-error'
 import { resolveRegisteredWorktreePath } from '../registered-worktree-roots-cache'
 import {
+  connectedAccountsLaunchForWorktree,
   getLocalGitOptionsForRegisteredWorktree,
   getLocalRepoForRegisteredWorktree
 } from '../local-worktree-runtime-options'
@@ -146,7 +147,8 @@ export function registerFilesystemGitPullRequestGenerationHandlers(
       const localEnv = await prepareLocalCommitMessageAgentEnv(
         resolvedSettings.params.agentId,
         commitMessageAgentEnv,
-        getLocalAgentRuntimeTarget(gitOptions)
+        getLocalAgentRuntimeTarget(gitOptions),
+        connectedAccountsLaunchForWorktree(store, args.worktreePath, worktreePath)
       )
       if (!localEnv.ok) {
         return { success: false, error: localEnv.error }
