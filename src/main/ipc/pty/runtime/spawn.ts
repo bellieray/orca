@@ -69,6 +69,9 @@ export async function spawnPtyFromRuntimeController(
     wslDistro: result.wslDistro ?? undefined,
     ...(stablePaneOwner ? { stablePaneOwner } : {}),
     ...(result.agentSessionEnsure ? { agentSessionEnsure: result.agentSessionEnsure } : {}),
-    ...(result.startupCwdFallback ? { startupCwdFallback: result.startupCwdFallback } : {})
+    ...(result.startupCwdFallback ? { startupCwdFallback: result.startupCwdFallback } : {}),
+    ...(result.connectedAccountsWarning
+      ? { connectedAccountsWarning: result.connectedAccountsWarning }
+      : {})
   }
 }

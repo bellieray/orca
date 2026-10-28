@@ -12,6 +12,8 @@ export type PtySpawnOutcome = {
   result: PtySpawnResult & {
     savedStartupCwd?: string
     startupCwdFallback?: StartupCwdFallback
+    /** Unresolved Connected Accounts binding, shown as a warning line in the pane. */
+    connectedAccountsWarning?: string
     stablePaneOwner?: { handle: string; tabId: string; leafId: string }
     launchConfig?: SleepingAgentLaunchConfig
     agentResumeUnavailable?: true

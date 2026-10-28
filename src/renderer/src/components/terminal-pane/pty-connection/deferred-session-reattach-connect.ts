@@ -1,5 +1,8 @@
 import { NOT_REOPENED, reopenPaneAfterMissingReattach } from './cold-restore-resume-startup'
-import { writeStartupCwdFallbackNotice } from './startup-cwd-fallback-notice'
+import {
+  writeConnectedAccountsWarningNotice,
+  writeStartupCwdFallbackNotice
+} from './startup-cwd-fallback-notice'
 import { armPaneOwnerRetry } from './pane-owner-recovery'
 import { isRemoteRuntimePtyId } from '../../../../../shared/remote-runtime/remote-runtime-pty-id'
 import { warnTerminalLifecycleAnomaly } from '../terminal-lifecycle-diagnostics'
@@ -240,6 +243,7 @@ function connectDeferredSessionReattach(
       )
       if (accepted && isCurrentReattach()) {
         writeStartupCwdFallbackNotice(session, result)
+        writeConnectedAccountsWarningNotice(session, result)
       }
       session.finishReattachLiveDataDeferral(accepted, outputCallbacks.generation)
       const gen = await preSignalPromise

@@ -1,3 +1,4 @@
+import { forgetConnectedAccountsPane } from '../../../connected-accounts/connected-accounts-pane-registry'
 import { isCurrentPtyExit, ptyOwnership } from './ownership-state'
 import {
   localBackgroundStreamUnsub,
@@ -87,6 +88,7 @@ export function bindProviderListeners(session: PtyIpcSession): void {
         return
       }
       const syntheticExit = session.consumeSyntheticKillExit(payload.id, payload.incarnationId)
+      forgetConnectedAccountsPane(payload.id)
       // Daemon restart replaces processes while their panes survive.
       const settleRestartStop = payload.replacedByRestart
         ? session.runtime?.intentionalPtyStops?.mark(

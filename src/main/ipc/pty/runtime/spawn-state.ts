@@ -1,3 +1,4 @@
+import type { ConnectedAccountsPane } from '../spawn-connected-accounts'
 import type { PtySpawnSizeSeed } from '../spawn-options-assembly'
 import type { PtySpawnOutcome } from '../spawn-outcome'
 import type { PtyRegistrationClaim } from '../../../runtime/runtime-terminal-state-records'
@@ -45,6 +46,9 @@ export type RuntimePtySpawnState = {
   requestedCwd: string | undefined
   prevalidatedCwd: string | undefined
   startupCwdFallback: StartupCwdFallback | undefined
+  /** Unresolved Connected Accounts binding: shown in the pane; the broken tool env is blocked. */
+  connectedAccountsWarning?: string
+  connectedAccountsPane?: ConnectedAccountsPane
   correctStartupCwd?: string
   provider: IPtyProvider
   isClaudeLaunch: boolean

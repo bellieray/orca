@@ -1,4 +1,4 @@
-import { withClaudeProfileTerminalEnv } from '../../../claude-accounts/claude-profile-installed-router'
+import { prepareConnectedAccountsSpawn } from '../spawn-connected-accounts'
 import type { PtySpawnResult } from '../../../providers/pty-provider-contract'
 import { LocalPtyProvider } from '../../../providers/local-pty-provider'
 import { isValidTerminalTabId } from '../../../../shared/terminal-tab-id'
@@ -85,11 +85,24 @@ export async function prepareRuntimePtySpawn(
   ctx.daemonShellOverride = ctx.terminalRuntimeOptions.shellOverride
   ctx.expectedWslDistro = target.expectedWslDistro
   ctx.codexSelectionTarget = target.codexSelectionTarget
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
-  ctx.claudeAuth =
-    ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
-      : null
+  const accounts = await prepareConnectedAccountsSpawn({
+    env: args.env,
+    worktreeId: args.worktreeId,
+    connectionId: args.connectionId,
+    target: ctx.codexSelectionTarget,
+    isAgentLaunch:
+      (ctx.isClaudeLaunch || args.launchAgent !== undefined) &&
+      !ctx.preAdoptedStablePane &&
+      (ctx.callerRequestedSessionId === undefined || args.isNewSession === true),
+    isClaudeLaunch: ctx.isClaudeLaunch,
+    store: ctx.deps.store,
+    settings: ctx.deps.getSettings?.() ?? undefined,
+    prepareClaudeAuth: ctx.deps.prepareClaudeAuth
+  })
+  args.env = accounts.env
+  ctx.connectedAccountsWarning = accounts.warning
+  ctx.connectedAccountsPane = accounts.pane
+  ctx.claudeAuth = await accounts.prepareClaudeAuth()
 
   ctx.shouldPersistHostSessionBinding = args.persistHostSessionBinding === true
   if (ctx.shouldPersistHostSessionBinding) {

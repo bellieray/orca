@@ -1,3 +1,4 @@
+import { recordConnectedAccountsSpawnedPane } from '../spawn-connected-accounts'
 import { provenSpawnResponse, type PtySpawnOutcome } from '../spawn-outcome'
 import { admitRendererAgentLaunchAuthority } from '../pane/launch-authority'
 import type { PtyIpcSpawnState } from './spawn-state'
@@ -92,6 +93,9 @@ function ipcSpawnPaneBinding(ctx: PtyIpcSpawnState): PtySpawnPaneBinding | undef
 
 function ipcSpawnResponse(ctx: PtyIpcSpawnState) {
   const args = ctx.args
+  if (!ctx.result.isReattach) {
+    recordConnectedAccountsSpawnedPane(ctx.result.id, ctx.connectedAccountsPane)
+  }
   const { startupCwdSource: _startupCwdSource, ...providerResult } = ctx.result
   const startupCwdFallback = startupCwdFallbackOutcome(ctx.startupCwdFallback, ctx.result)
   return {
@@ -109,6 +113,9 @@ function ipcSpawnResponse(ctx: PtyIpcSpawnState) {
       ? { launchConfig: ctx.effectiveLaunchConfig }
       : {}),
     ...(startupCwdFallback ? { startupCwdFallback } : {}),
+    ...(ctx.connectedAccountsWarning && !ctx.result.isReattach
+      ? { connectedAccountsWarning: ctx.connectedAccountsWarning }
+      : {}),
     ...resumeDisposition(ctx)
   }
 }

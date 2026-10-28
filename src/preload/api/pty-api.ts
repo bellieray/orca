@@ -99,6 +99,7 @@ export type PtyApi = {
     sessionExpired?: boolean
     coldRestore?: { scrollback: string; cwd: string; cols?: number; rows?: number }
     startupCwdFallback?: { kind: 'worktree'; cwd: string }
+    connectedAccountsWarning?: string
     agentResumeUnavailable?: true
     agentResumeRefused?: 'chat-home' | 'chat-writing' | 'unverifiable'
     savedResumeDecision?: SavedResumeDecision

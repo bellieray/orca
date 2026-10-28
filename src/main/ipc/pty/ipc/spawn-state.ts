@@ -1,3 +1,4 @@
+import type { ConnectedAccountsPane } from '../spawn-connected-accounts'
 import type { PtySpawnSizeSeed } from '../spawn-options-assembly'
 import type { StartupCwdFallback } from '../../../../shared/startup-cwd-fallback'
 import type { PtyRegistrationClaim } from '../../../runtime/runtime-terminal-state-records'
@@ -100,6 +101,9 @@ export type PtyIpcSpawnState = {
   provisionalPtySize: PtySpawnSizeSeed | undefined
   initiallyHidden: boolean
   preSpawnHiddenMarkId: string | null
+  /** Unresolved Connected Accounts binding: shown in the pane; the broken tool env is blocked. */
+  connectedAccountsWarning?: string
+  connectedAccountsPane?: ConnectedAccountsPane
 }
 
 export function createPtyIpcSpawnState(

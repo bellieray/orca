@@ -12,6 +12,8 @@ export type PtySpawnResult = TerminalLaunchResult & {
   agentSessionEnsure?: AgentSessionClaimedSpawnResult
   /** App-routable id; remote relay-local handles cannot route renderer/runtime IPC. */
   id: string
+  /** Unresolved Connected Accounts binding; the pane shows it and the broken tool env is blocked. */
+  connectedAccountsWarning?: string
   /** Opaque provider-owned identity for this process behind a reusable PTY id. */
   incarnationId?: PtyIncarnationId
   /** The provider observed this exact spawn exit before returning its spawn result. */

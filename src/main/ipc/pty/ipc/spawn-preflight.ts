@@ -1,4 +1,4 @@
-import { withClaudeProfileTerminalEnv } from '../../../claude-accounts/claude-profile-installed-router'
+import { prepareConnectedAccountsSpawn } from '../spawn-connected-accounts'
 import { mintPtySessionId } from '../../../daemon/pty-session-id'
 import { LocalPtyProvider } from '../../../providers/local-pty-provider'
 import {
@@ -100,10 +100,23 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
   ctx.expectedWslDistro = target.expectedWslDistro
   ctx.codexSelectionTarget = target.codexSelectionTarget
   ctx.spawnTiming.mark('preflight')
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
-  ctx.claudeAuth =
-    ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
-      : null
+  const accounts = await prepareConnectedAccountsSpawn({
+    env: args.env,
+    worktreeId: args.worktreeId,
+    connectionId: args.connectionId,
+    target: ctx.codexSelectionTarget,
+    isAgentLaunch:
+      (ctx.isClaudeLaunch || args.launchAgent !== undefined) &&
+      !ctx.preAdoptedStablePane &&
+      args.sessionId === undefined,
+    isClaudeLaunch: ctx.isClaudeLaunch,
+    store: ctx.deps.store,
+    settings: ctx.deps.getSettings?.() ?? undefined,
+    prepareClaudeAuth: ctx.deps.prepareClaudeAuth
+  })
+  args.env = accounts.env
+  ctx.connectedAccountsWarning = accounts.warning
+  ctx.connectedAccountsPane = accounts.pane
+  ctx.claudeAuth = await accounts.prepareClaudeAuth()
   ctx.spawnTiming.mark('auth')
 }

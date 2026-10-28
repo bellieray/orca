@@ -44,6 +44,9 @@ export function projectIpcPtyConnectResult(
       ...(spawnResult.startupCwdFallback
         ? { startupCwdFallback: spawnResult.startupCwdFallback }
         : {}),
+      ...(spawnResult.connectedAccountsWarning
+        ? { connectedAccountsWarning: spawnResult.connectedAccountsWarning }
+        : {}),
       ...(spawnResult.agentResumeUnavailable ? { agentResumeUnavailable: true as const } : {}),
       ...(spawnResult.agentResumeRefused
         ? { agentResumeRefused: spawnResult.agentResumeRefused }
@@ -54,6 +57,7 @@ export function projectIpcPtyConnectResult(
     launchAgent ||
     spawnResult.launchConfig ||
     spawnResult.startupCwdFallback ||
+    spawnResult.connectedAccountsWarning ||
     spawnResult.agentResumeUnavailable ||
     spawnResult.savedResumeDecision ||
     spawnResult.refusedResume ||
@@ -67,6 +71,9 @@ export function projectIpcPtyConnectResult(
       ...(spawnResult.launchConfig ? { launchConfig: spawnResult.launchConfig } : {}),
       ...(spawnResult.startupCwdFallback
         ? { startupCwdFallback: spawnResult.startupCwdFallback }
+        : {}),
+      ...(spawnResult.connectedAccountsWarning
+        ? { connectedAccountsWarning: spawnResult.connectedAccountsWarning }
         : {}),
       ...(spawnResult.agentResumeUnavailable ? { agentResumeUnavailable: true as const } : {}),
       ...(spawnResult.agentResumeRefused

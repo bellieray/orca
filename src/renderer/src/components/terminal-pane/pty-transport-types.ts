@@ -112,6 +112,7 @@ export type PtyConnectResult = TerminalLaunchResult & {
   coldRestore?: { scrollback: string; cwd: string; cols?: number; rows?: number }
   replay?: string
   startupCwdFallback?: { kind: 'worktree'; cwd: string }
+  connectedAccountsWarning?: string
   /** Main declined an unverifiable provider-session resume and launched fresh. */
   agentResumeUnavailable?: true
   /** Main refused the resume and started the plain shell: a native chat is the conversation's home

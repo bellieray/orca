@@ -1,3 +1,4 @@
+import { recordConnectedAccountsSpawnedPane } from '../spawn-connected-accounts'
 import { provenSpawnResponse } from '../spawn-outcome'
 import { isNativeWindowsLocalPtySpawn } from '../../../runtime/terminal-model-query-authority'
 import { normalizeValidPaneKey } from '../pane/key-state'
@@ -15,6 +16,9 @@ export async function commitRuntimePtySpawn(ctx: RuntimePtySpawnState) {
     // Fallback may follow an access error; only proven absence authorizes changing the saved folder.
     const correctStartupCwd = startupCwdFallback ? ctx.correctStartupCwd : undefined
     const ensure = ctx.result.agentSessionEnsure
+    if (!ctx.result.isReattach) {
+      recordConnectedAccountsSpawnedPane(ctx.result.id, ctx.connectedAccountsPane)
+    }
     return commitPtySpawn({
       state: ctx,
       nativeWindowsConptySpawn: isNativeWindowsLocalPtySpawn({
@@ -42,7 +46,10 @@ export async function commitRuntimePtySpawn(ctx: RuntimePtySpawnState) {
       response: {
         ...provenSpawnResponse(ctx.result, ctx.provedSnapshotSeq),
         savedStartupCwd: correctStartupCwd ?? ctx.requestedCwd,
-        ...(startupCwdFallback ? { startupCwdFallback } : {})
+        ...(startupCwdFallback ? { startupCwdFallback } : {}),
+        ...(ctx.connectedAccountsWarning && !ctx.result.isReattach
+          ? { connectedAccountsWarning: ctx.connectedAccountsWarning }
+          : {})
       }
     })
   })
