@@ -71,7 +71,8 @@ export function useVisibleSidebarWorktrees(args: {
     hideWorkspacesFromOtherDevices,
     alwaysShowDefaultBranchWorkspace,
     visibleWorkspaceHostIds,
-    workspaceHostScope
+    workspaceHostScope,
+    hiddenRepoIds
   } = filterState
   const worktreesByRepo = useAppStore((s) => selectWorktreesByRepo(s))
   const agentStatusEpoch = useAppStore((s) => (!showSleepingWorkspaces ? s.agentStatusEpoch : 0))
@@ -124,6 +125,7 @@ export function useVisibleSidebarWorktrees(args: {
   const recomputedVisibleWorktrees = useMemo(() => {
     return computeVisibleWorktrees(worktreesByRepo, sortedIds, {
       filterRepoIds,
+      hiddenRepoIds,
       showSleepingWorkspaces,
       tabsByWorktree,
       ptyIdsByTabId,
@@ -155,6 +157,7 @@ export function useVisibleSidebarWorktrees(args: {
     worktreeIdsWithLiveAgent,
     sleepingSweepExemptWorktreeIds,
     filterRepoIds,
+    hiddenRepoIds,
     showSleepingWorkspaces,
     hideDefaultBranchWorkspace,
     hideAutomationGeneratedWorkspaces,

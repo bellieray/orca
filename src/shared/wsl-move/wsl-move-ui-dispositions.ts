@@ -25,6 +25,7 @@ export const UI_STATE_DISPOSITIONS = {
   showDotfilesByWorktree: moveDisposition(38, { rewriteDesktopCopy: true }),
   filterRepoIds: moveDisposition(38),
   agentsFilterRepoIds: moveDisposition(38),
+  hiddenRepoIds: moveDisposition(38),
   setupScriptPromptDismissedRepoIds: moveDisposition(38),
   acknowledgedAgentsByPaneKey: moveDisposition(38, { note: 'Pane keys are kept.' }),
   activityClearedAtByPaneKey: moveDisposition(38, { note: 'Pane keys are kept.' }),

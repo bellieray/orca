@@ -132,6 +132,7 @@ it('composes real dispatched headers, current repo gates and folder cache refres
     const projectHeaderHostContexts = useProjectHeaderHostContexts({ rows, hosts, repoMap })
     const header: SectionHeaderRowContext = {
       groupBy: 'repo',
+      dimmedRepoIds: [],
       collapsedGroups: new Set(),
       workspaceStatuses: [],
       projectGroups,

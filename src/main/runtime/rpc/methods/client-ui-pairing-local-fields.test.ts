@@ -47,6 +47,7 @@ describe('client UI RPC pairing-local field seams', () => {
     sidebarOpen: false,
     agentsVisibleHostIds: ['runtime:web-11111111-2222-3333-4444-555555555555'],
     agentsFilterRepoIds: ['repo-a'],
+    hiddenRepoIds: ['repo-a'],
     agentsHideWorkspacesFromOtherDevices: true,
     agentsHideAutomationGeneratedWorkspaces: true,
     agentsHideCliCreatedWorkspaces: true,

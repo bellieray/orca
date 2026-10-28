@@ -28,6 +28,7 @@ type BuildArgs = {
   measureVirtualRowElement: (element: HTMLDivElement | null) => void
   settings: AppState['settings']
   worktreeVisibilityDefaultsByHost: AppState['worktreeVisibilityDefaultsByHost']
+  dimmedRepoIds: readonly string[]
   newCardStyle: boolean
   folderBackedProjectGroupIds: ReadonlySet<string>
   session: WorktreeDragSession
@@ -85,6 +86,7 @@ export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtual
       projectHeaderHostContexts: args.projectHeaderHostContexts,
       getCachedFolderWorkspacePathStatus: args.getCachedFolderWorkspacePathStatus,
       toggleGroupWithScrollAnchor: args.toggleGroupWithScrollAnchor,
+      dimmedRepoIds: args.dimmedRepoIds,
       projectActions: {
         getWorktreeVisibilityDefaults: (repo) =>
           getRepoOwnerWorktreeVisibilityDefaults(

@@ -201,6 +201,7 @@ export function getDefaultUIState(): PersistedUIState {
     filterRepoIds: [],
     agentsVisibleHostIds: null,
     agentsFilterRepoIds: [],
+    hiddenRepoIds: [],
     agentsHideWorkspacesFromOtherDevices: false,
     agentsHideAutomationGeneratedWorkspaces: false,
     agentsHideCliCreatedWorkspaces: false,

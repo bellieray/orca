@@ -19,6 +19,8 @@ export type VisibleSidebarWorktreeInputs = {
   facts: WorkspaceRowFactReader<Worktree>
   worktreeLineageById: Record<string, WorktreeLineage>
   filterRepoIds: readonly string[]
+  /** Projects concealed from this desktop; unlike filterRepoIds they are never an active filter. */
+  hiddenRepoIds?: readonly string[]
   injectLineageAncestors?: boolean
   preserveLineageParentOrder?: boolean
   forcedVisibleWorktreeIds?: readonly string[]
@@ -33,6 +35,7 @@ export function selectVisibleSidebarWorktrees({
   facts,
   worktreeLineageById,
   filterRepoIds,
+  hiddenRepoIds,
   injectLineageAncestors,
   preserveLineageParentOrder,
   forcedVisibleWorktreeIds
@@ -40,7 +43,14 @@ export function selectVisibleSidebarWorktrees({
   // Keep valid nonarchived ancestors despite ordinary filters so children retain their hierarchy.
   const selectedRepoIds = filterRepoIds.length > 0 ? new Set(filterRepoIds) : null
 
+  const hiddenRepoIdSet = hiddenRepoIds && hiddenRepoIds.length > 0 ? new Set(hiddenRepoIds) : null
+  const isInHiddenRepo = (worktree: Worktree): boolean =>
+    hiddenRepoIdSet !== null && hiddenRepoIdSet.has(worktree.repoId)
+
   let all = filterWorkspaceRows(rows, filters, facts)
+  if (hiddenRepoIdSet) {
+    all = all.filter((worktree) => !isInHiddenRepo(worktree))
+  }
 
   if (forcedVisibleWorktreeIds && forcedVisibleWorktreeIds.length > 0) {
     const includedIds = new Set(all.map((worktree) => worktree.id))
@@ -48,7 +58,7 @@ export function selectVisibleSidebarWorktrees({
       const worktree = includedIds.has(worktreeId)
         ? undefined
         : [...ancestorByIdentity.values()].find((candidate) => candidate.id === worktreeId)
-      if (worktree) {
+      if (worktree && !isInHiddenRepo(worktree)) {
         includedIds.add(worktreeId)
         all.push(worktree)
       }
@@ -57,7 +67,13 @@ export function selectVisibleSidebarWorktrees({
 
   // Append unranked/new rows until the next sortEpoch. Manual placement follows the parent, even if a hidden child ranks higher.
   if (injectLineageAncestors !== false && preserveLineageParentOrder) {
-    all = addVisibleLineageAncestors(all, ancestorByIdentity, worktreeLineageById, selectedRepoIds)
+    all = addVisibleLineageAncestors(
+      all,
+      ancestorByIdentity,
+      worktreeLineageById,
+      selectedRepoIds,
+      hiddenRepoIdSet
+    )
   }
   all = all
     .map((worktree) => ({ worktree, rank: rankOf(worktree) ?? Infinity }))
@@ -66,14 +82,21 @@ export function selectVisibleSidebarWorktrees({
 
   return injectLineageAncestors === false || preserveLineageParentOrder
     ? all
-    : addVisibleLineageAncestors(all, ancestorByIdentity, worktreeLineageById, selectedRepoIds)
+    : addVisibleLineageAncestors(
+        all,
+        ancestorByIdentity,
+        worktreeLineageById,
+        selectedRepoIds,
+        hiddenRepoIdSet
+      )
 }
 
 function addVisibleLineageAncestors(
   worktrees: Worktree[],
   ancestorByIdentity: ReadonlyMap<string, Worktree>,
   lineageById: Record<string, WorktreeLineage>,
-  selectedRepoIds: ReadonlySet<string> | null
+  selectedRepoIds: ReadonlySet<string> | null,
+  hiddenRepoIds: ReadonlySet<string> | null
 ): Worktree[] {
   const result: Worktree[] = []
   const included = new Set<string>()
@@ -87,7 +110,11 @@ function addVisibleLineageAncestors(
     }
     const parent = parentByIdentity.get(identity)
     // Repository filters are hard boundaries; ordinary filters may retain ancestors.
-    if (parent && (!selectedRepoIds || selectedRepoIds.has(parent.repoId))) {
+    if (
+      parent &&
+      (!selectedRepoIds || selectedRepoIds.has(parent.repoId)) &&
+      !hiddenRepoIds?.has(parent.repoId)
+    ) {
       addWithAncestors(parent)
     }
     if (!included.has(identity)) {
@@ -100,4 +127,11 @@ function addVisibleLineageAncestors(
     addWithAncestors(worktree)
   }
   return result
+}
+
+/** A feed view's project scope: its filter plus the projects concealed on this desktop (a phone sends none). */
+export function getFeedRepoScope(view: {
+  filters: { filterRepoIds: readonly string[]; hiddenRepoIds?: readonly string[] }
+}): { filterRepoIds: readonly string[]; hiddenRepoIds?: readonly string[] } {
+  return { filterRepoIds: view.filters.filterRepoIds, hiddenRepoIds: view.filters.hiddenRepoIds }
 }

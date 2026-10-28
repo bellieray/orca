@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
+import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 import { useStructuredChatTabNames } from '@/runtime/structured-chat-name-observation'
 import { getRepoMapFromState, getWorktreeMapFromState } from '@/store/selectors'
 import type { AppState } from '@/store/types'
@@ -180,7 +181,7 @@ export function useAgentPaneThreads(args: {
     [storeData, agentStatusEpoch, chatNames]
   )
 
-  const allThreads = useMemo(
+  const builtThreads = useMemo(
     () =>
       buildAgentPaneThreads(
         {
@@ -192,6 +193,16 @@ export function useAgentPaneThreads(args: {
         threadReuseCacheRef.current
       ),
     [allEvents, liveAgentByPaneKey, paneEntryByPaneKey, storeData.generatedTitlesEnabled]
+  )
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
+  const allThreads = useMemo(
+    () =>
+      concealedRepoIds.length === 0
+        ? builtThreads
+        : builtThreads.filter(
+            (thread) => !thread.repo || !concealedRepoIds.includes(thread.repo.id)
+          ),
+    [builtThreads, concealedRepoIds]
   )
 
   const selectedPaneKeyIsLive =

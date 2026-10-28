@@ -27,6 +27,7 @@ import { useWorktreeSidebarHeaderDrag } from '../drag/use-header-drag'
 import { useWorktreeSidebarScrollSuppression } from './use-scroll-suppression'
 import { EMPTY_PROJECT_GROUPS, type VirtualizedWorktreeViewportProps } from './viewport-props'
 import { useWorktreeDropCommitContext } from '../drag/use-drop-commit-context'
+import { selectDimmedRepoIds } from '../../hidden-repo-visibility'
 import { buildWorktreeVirtualRowContext } from './virtual-row-context'
 import { renderWorktreeVirtualRow } from '../rows/virtual-row-dispatch'
 
@@ -60,6 +61,7 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const settings = useAppStore((s) => s.settings)
   const worktreeVisibilityDefaultsByHost = useAppStore((s) => s.worktreeVisibilityDefaultsByHost)
+  const dimmedRepoIds = useAppStore(selectDimmedRepoIds)
   const projectHeaderHostContexts = useProjectHeaderHostContexts({
     rows,
     visibleProjectRepoIdsBySection: props.visibleProjectRepoIdsBySection,
@@ -309,6 +311,7 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
     measureVirtualRowElement,
     settings,
     worktreeVisibilityDefaultsByHost,
+    dimmedRepoIds,
     newCardStyle,
     folderBackedProjectGroupIds,
     projectGroups,

@@ -145,6 +145,7 @@ export const UiUpdateFields = z
     visibleWorkspaceHostIds: z.array(z.string()).nullable().optional(),
     agentsVisibleHostIds: z.array(z.string()).nullable().optional(),
     agentsFilterRepoIds: StringArray.optional(),
+    hiddenRepoIds: StringArray.optional(),
     agentsHideWorkspacesFromOtherDevices: z.boolean().optional(),
     agentsHideAutomationGeneratedWorkspaces: z.boolean().optional(),
     agentsHideCliCreatedWorkspaces: z.boolean().optional(),

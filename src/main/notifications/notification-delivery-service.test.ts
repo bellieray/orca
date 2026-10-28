@@ -129,6 +129,23 @@ describe('createNotificationDeliveryService', () => {
     })
   })
 
+  it('keeps a hidden project off the desktop and tray while the phone gets the same push', () => {
+    const plain = makeHarness(makeSettings())
+    createNotificationDeliveryService(plain.deps).dispatch(makeRequest())
+    const harness = makeHarness(makeSettings())
+    const service = createNotificationDeliveryService(harness.deps)
+
+    expect(service.dispatch(makeRequest({ desktopSuppressed: true }))).toEqual({
+      delivered: false,
+      reason: 'hidden-project'
+    })
+    expect(harness.deliverNative).not.toHaveBeenCalled()
+    expect(harness.setTrayAttention).not.toHaveBeenCalled()
+    expect(harness.dispatchMobileNotification.mock.calls).toEqual(
+      plain.dispatchMobileNotification.mock.calls
+    )
+  })
+
   it('skips the desktop banner for a muted machine but still reaches the phone', () => {
     const harness = makeHarness(makeSettings({ mutedNotificationSourceIds: ['runtime:m4air'] }))
     const service = createNotificationDeliveryService(harness.deps)

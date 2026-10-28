@@ -1,3 +1,4 @@
+import { withoutConcealedRepos } from '../../hidden-repo-visibility'
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
@@ -122,7 +123,10 @@ export function useMainSidebarListModel(args: SidebarListModelArgs): SidebarList
       sortBy,
       projectOrderBy: args.projectOrderBy,
       collapsedGroups: PLANNED_UNCOLLAPSED,
-      filters: sidebarWorkspaceRowFilters(filterState),
+      filters: {
+        ...sidebarWorkspaceRowFilters(filterState),
+        hiddenRepoIds: filterState.hiddenRepoIds
+      },
       workspaceHostScope: filterState.workspaceHostScope,
       visibleWorkspaceHostIds: filterState.visibleWorkspaceHostIds,
       workspaceStatuses: args.workspaceStatuses,
@@ -151,15 +155,24 @@ export function useMainSidebarListModel(args: SidebarListModelArgs): SidebarList
 
   const visibleReposForRows = useMemo(
     () =>
-      filterReposForVisibleHosts(
-        repos,
-        getVisibleSidebarHostIdSet(
-          filterState.visibleWorkspaceHostIds,
-          filterState.workspaceHostScope
+      withoutConcealedRepos(
+        filterReposForVisibleHosts(
+          repos,
+          getVisibleSidebarHostIdSet(
+            filterState.visibleWorkspaceHostIds,
+            filterState.workspaceHostScope
+          ),
+          defaultHostId
         ),
-        defaultHostId
+        filterState.hiddenRepoIds
       ),
-    [repos, filterState.visibleWorkspaceHostIds, filterState.workspaceHostScope, defaultHostId]
+    [
+      repos,
+      filterState.visibleWorkspaceHostIds,
+      filterState.workspaceHostScope,
+      filterState.hiddenRepoIds,
+      defaultHostId
+    ]
   )
   const externalWorktreeCards = useSidebarExternalWorktreeCards({
     repos,

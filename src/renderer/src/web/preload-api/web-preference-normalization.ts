@@ -80,6 +80,7 @@ export function mergeHostWebUIState(
     sidebarOpen: local.sidebarOpen,
     agentsVisibleHostIds: local.agentsVisibleHostIds,
     agentsFilterRepoIds: local.agentsFilterRepoIds,
+    hiddenRepoIds: local.hiddenRepoIds,
     agentsHideWorkspacesFromOtherDevices: local.agentsHideWorkspacesFromOtherDevices === true,
     agentsHideAutomationGeneratedWorkspaces: local.agentsHideAutomationGeneratedWorkspaces === true,
     agentsHideCliCreatedWorkspaces: local.agentsHideCliCreatedWorkspaces === true,

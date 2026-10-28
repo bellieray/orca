@@ -5,7 +5,7 @@ import type { AppState } from '@/store/types'
 import { getSettingsFocusedExecutionHostId } from '../../../shared/execution-host'
 import type { Worktree } from '../../../shared/worktree/types'
 import { sameBucketRecords } from './bucket-record-equality'
-import { getUnreadBadgeCount } from './unread-badge-count'
+import { getHiddenProjectUnreadCount, getUnreadBadgeCount } from './unread-badge-count'
 import { hasLiveTabMarker } from '@/store/slices/workspace-attention/workspace-live-markers'
 import { folderWorkspaceKey } from '../../../shared/workspace-scope'
 import { selectFolderWorkspaces, selectWorktreesByRepo } from '@/store/workspace-record-selectors'
@@ -25,6 +25,7 @@ type UnreadBadgeCountState = Pick<
   | 'tabsByWorktree'
   | 'unifiedTabsByWorktree'
   | 'unreadTerminalTabs'
+  | 'hiddenRepoIds'
 >
 
 /** The worktree fields the count reads (`id` embeds `repoId`), so equality over them is a sound cache key. */
@@ -72,6 +73,7 @@ function sameCountInputs(previous: UnreadBadgeCountState, next: UnreadBadgeCount
     selectFolderWorkspaces(previous) === selectFolderWorkspaces(next) &&
     previous.projectGroups === next.projectGroups &&
     previous.repos === next.repos &&
+    previous.hiddenRepoIds === next.hiddenRepoIds &&
     previous.workspaceHostScope === next.workspaceHostScope &&
     previous.visibleWorkspaceHostIds === next.visibleWorkspaceHostIds &&
     previous.settings?.activeRuntimeEnvironmentId === next.settings?.activeRuntimeEnvironmentId &&
@@ -106,6 +108,7 @@ export function createUnreadBadgeCountSelector(): (state: UnreadBadgeCountState)
         repoMap: getRepoMapFromState(state),
         visibleHostIds: getVisibleWorkspaceHostIdSet(state),
         defaultHostId: getSettingsFocusedExecutionHostId(state.settings),
+        hiddenRepoIds: new Set(state.hiddenRepoIds),
         hiddenOtherDevicePairings: state.hideWorkspacesFromOtherDevices
           ? getPairedDeviceIdsByEnvironment(
               state.runtimeEnvironments,
@@ -117,4 +120,13 @@ export function createUnreadBadgeCountSelector(): (state: UnreadBadgeCountState)
     previousState = state
     return unreadCount
   }
+}
+
+/** The Projects header badge: unread workspaces in hidden projects, shown concealed or revealed. */
+export function selectHiddenProjectUnreadCount(
+  state: Pick<AppState, 'worktreesByRepo' | 'hiddenRepoIds'>
+): number {
+  return state.hiddenRepoIds.length === 0
+    ? 0
+    : getHiddenProjectUnreadCount(selectWorktreesByRepo(state), state.hiddenRepoIds)
 }

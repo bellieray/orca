@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeVisibleWorktreeIds } from './compute-visible-worktrees'
+import { sidebarHasActiveFilters } from './sidebar-filter-actions'
 import { getPairedDeviceIdsByEnvironment } from '../../../../shared/workspace-creator-visibility'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
@@ -94,6 +95,25 @@ function visibleOptions(overrides: Partial<VisibleOptions> = {}): VisibleOptions
 }
 
 describe('computeVisibleWorktreeIds', () => {
+  it('drops hidden projects without counting them as an active filter', () => {
+    const hiddenChild = makeWorktree('hidden-child', 'repo2')
+    const shown = makeWorktree('shown')
+    const hiddenParent = makeWorktree('hidden-parent', 'repo2')
+    const crossChild = makeWorktree('cross-child')
+
+    const result = computeVisibleWorktreeIds(
+      { repo1: [shown, crossChild], repo2: [hiddenChild, hiddenParent] },
+      [shown.id, crossChild.id, hiddenChild.id, hiddenParent.id],
+      visibleOptions({
+        hiddenRepoIds: ['repo2'],
+        worktreeLineageById: { [crossChild.id]: makeWorktreeLineage(crossChild, hiddenParent) }
+      })
+    )
+
+    expect(result).toEqual([shown.id, crossChild.id])
+    expect(sidebarHasActiveFilters({ ...visibleOptions(), hiddenRepoIds: ['repo2'] })).toBe(false)
+  })
+
   it('prefers the authenticated live device id over cached pairing metadata', () => {
     const deviceIds = getPairedDeviceIdsByEnvironment(
       [{ id: 'env-1', pairedDeviceId: 'cached-device' } as never],

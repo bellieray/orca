@@ -5,6 +5,7 @@ import { useAppStore } from '@/store'
 import { usePluginCommands } from '@/store/plugin-panels'
 import { useSettingsNavigationMetadata } from '@/hooks/useSettingsNavigationMetadata'
 import { dedupePaletteWorktrees } from '@/lib/palette-repo-resolution'
+import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 import { getFolderWorkspaceWorktree } from '@/store/slices/worktrees/listing/detected-worktree-meta'
 import {
   selectPaletteIndexStatusSnapshot,
@@ -36,13 +37,16 @@ export function useWorktreeJumpPaletteStoreState({
   const revealSidebarRow = useAppStore((state) => state.revealSidebarRow)
   const worktreesByRepo = useAppStore((state) => selectWorktreesByRepo(state))
   const folderWorkspaces = useAppStore((state) => selectFolderWorkspaces(state))
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
   const workspaces = useMemo(
     () =>
       dedupePaletteWorktrees([
-        ...Object.values(worktreesByRepo).flat(),
+        ...Object.values(worktreesByRepo)
+          .flat()
+          .filter((worktree) => !concealedRepoIds.includes(worktree.repoId)),
         ...folderWorkspaces.map(getFolderWorkspaceWorktree)
       ]),
-    [folderWorkspaces, worktreesByRepo]
+    [concealedRepoIds, folderWorkspaces, worktreesByRepo]
   )
   const repos = useAppStore((state) => state.repos)
   const projectGroups = useAppStore((state) => state.projectGroups)

@@ -67,6 +67,8 @@ export type NotificationDispatchRequest = {
   structuredOrigin?: StructuredAttentionOrigin
   /** The execution host already pushed this to its paired phones, so main must not fan it out again. */
   mobileDeliveredByHost?: boolean
+  /** The workspace's project is hidden on this desktop: skip banner, sound and tray, keep the phone push. */
+  desktopSuppressed?: boolean
 }
 
 export type NotificationDispatchResult = {
@@ -76,6 +78,7 @@ export type NotificationDispatchResult = {
     | 'disabled'
     | 'source-disabled'
     | 'host-muted'
+    | 'hidden-project'
     | 'suppressed-focus'
     | 'cooldown'
     | 'not-supported'

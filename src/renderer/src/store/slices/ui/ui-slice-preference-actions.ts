@@ -155,6 +155,22 @@ export function createUiPreferenceActions(set: UISliceSet, get: UISliceGet): Par
     filterRepoIds: [],
     setFilterRepoIds: (ids) => set({ filterRepoIds: ids }),
 
+    hiddenRepoIds: [],
+    setRepoHidden: (repoId, hidden) =>
+      set((s) => {
+        const isHidden = s.hiddenRepoIds.includes(repoId)
+        if (isHidden === hidden) {
+          return s
+        }
+        const hiddenRepoIds = hidden
+          ? [...s.hiddenRepoIds, repoId]
+          : s.hiddenRepoIds.filter((id) => id !== repoId)
+        window.api.ui.set({ hiddenRepoIds }).catch(console.error)
+        return { hiddenRepoIds }
+      }),
+    revealHiddenRepos: false,
+    setRevealHiddenRepos: (reveal) => set({ revealHiddenRepos: reveal }),
+
     ...createAgentsViewPreferenceActions(set),
 
     collapsedGroups: new Set<string>(),

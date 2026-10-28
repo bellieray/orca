@@ -29,6 +29,8 @@ export type UnreadBadgeCountSources = {
   defaultHostId: ExecutionHostId
   /** null unless the sidebar hides workspaces created from other devices. */
   hiddenOtherDevicePairings: ReadonlyMap<string, string> | null
+  /** Hidden projects never reach the dock, even while revealed. */
+  hiddenRepoIds?: ReadonlySet<string>
   tabsByWorktree?: Readonly<Record<string, readonly Pick<TerminalTab, 'id'>[]>>
   unifiedTabsByWorktree?: Readonly<Record<string, readonly Pick<Tab, 'id' | 'contentType'>[]>>
   unreadTerminalTabs?: Readonly<Record<string, StoredAgentAttentionUnread>>
@@ -45,6 +47,7 @@ export function getUnreadBadgeCount(sources: UnreadBadgeCountSources): number {
       if (
         worktree.isUnread &&
         !worktree.isArchived &&
+        !sources.hiddenRepoIds?.has(worktree.repoId) &&
         (!sources.hiddenOtherDevicePairings ||
           !isWorkspaceOwnedBySomeoneElse(worktree, sources.hiddenOtherDevicePairings)) &&
         worktreeMatchesVisibleHost(worktree, visibleHostIds, sources.repoMap, defaultHostId)
@@ -54,6 +57,22 @@ export function getUnreadBadgeCount(sources: UnreadBadgeCountSources): number {
     }
   }
   return unreadWorktrees.size + countUnreadFolderRows(sources)
+}
+
+/** Unread workspaces inside hidden projects, for the Projects header badge. */
+export function getHiddenProjectUnreadCount(
+  worktreesByRepo: Readonly<Record<string, readonly Worktree[]>>,
+  hiddenRepoIds: readonly string[]
+): number {
+  const unreadWorktrees = new Set<string>()
+  for (const repoId of hiddenRepoIds) {
+    for (const worktree of worktreesByRepo[repoId] ?? []) {
+      if (worktree.isUnread && !worktree.isArchived) {
+        unreadWorktrees.add(worktree.id)
+      }
+    }
+  }
+  return unreadWorktrees.size
 }
 
 /** Folder workspaces through the same membership steps the sidebar runs before building rows. */

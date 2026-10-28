@@ -4,7 +4,11 @@ import { makeWorktree, TEST_REPO } from '../store/slices/worktrees-slice-test-fi
 import { makeFolderWorkspace } from '@/store/slices/worktrees-slice-test-fixtures'
 import type { ProjectGroup } from '../../../shared/project-group-types'
 import type { Worktree } from '../../../shared/worktree/types'
-import { getUnreadBadgeCount, type UnreadBadgeCountSources } from './unread-badge-count'
+import {
+  getHiddenProjectUnreadCount,
+  getUnreadBadgeCount,
+  type UnreadBadgeCountSources
+} from './unread-badge-count'
 
 function worktree(id: string, overrides: Partial<Worktree> = {}): Worktree {
   return makeWorktree({ id, repoId: TEST_REPO.id, isUnread: true, ...overrides })
@@ -57,6 +61,19 @@ function count(overrides: Partial<UnreadBadgeCountSources>): number {
 }
 
 describe('getUnreadBadgeCount', () => {
+  it('keeps hidden projects out of the dock while the Projects badge counts them', () => {
+    const worktreesByRepo = {
+      [TEST_REPO.id]: [worktree('shown')],
+      hidden: [
+        worktree('hidden-unread', { repoId: 'hidden' }),
+        worktree('hidden-read', { repoId: 'hidden', isUnread: false }),
+        worktree('hidden-archived', { repoId: 'hidden', isArchived: true })
+      ]
+    }
+    expect(count({ worktreesByRepo, hiddenRepoIds: new Set(['hidden']) })).toBe(1)
+    expect(getHiddenProjectUnreadCount(worktreesByRepo, ['hidden'])).toBe(1)
+  })
+
   it('preserves id-only deduplication across execution hosts', () => {
     const rows = [worktree('wt-1', { hostId: 'local' }), worktree('wt-1', { hostId: 'ssh:remote' })]
     expect(count({ worktreesByRepo: { repo1: rows } })).toBe(1)

@@ -14,6 +14,8 @@ export const PAIRING_LOCAL_UI_FIELDS = [
   // Agent View filters and presentation belong to each client's host catalog and viewport.
   'agentsVisibleHostIds',
   'agentsFilterRepoIds',
+  // Hiding a project is a privacy screen for the screen it was chosen on.
+  'hiddenRepoIds',
   'agentsHideWorkspacesFromOtherDevices',
   'agentsHideAutomationGeneratedWorkspaces',
   'agentsHideCliCreatedWorkspaces',

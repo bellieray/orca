@@ -67,6 +67,12 @@ export type UISlicePreferences = {
   toggleShowDotfilesForWorktree: (worktreeId: string) => void
   filterRepoIds: readonly string[]
   setFilterRepoIds: (ids: readonly string[]) => void
+  /** Projects concealed from this desktop's sidebar, Agents view, palette and banners. */
+  hiddenRepoIds: readonly string[]
+  setRepoHidden: (repoId: string, hidden: boolean) => void
+  /** Session-only: shows hidden projects dimmed; never persisted so a restart conceals them again. */
+  revealHiddenRepos: boolean
+  setRevealHiddenRepos: (reveal: boolean) => void
   /** Agents-view scope filters, independent from workspace navigation filters. */
   agentsVisibleHostIds: VisibleWorkspaceHostIds
   setAgentsVisibleHostIds: (ids: VisibleWorkspaceHostIds) => void

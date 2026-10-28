@@ -8,6 +8,7 @@ import {
   getPairedDeviceIdsByEnvironment
 } from '../../../../shared/workspace-creator-visibility'
 import type { VisibleWorktreeOptions } from './compute-visible-worktrees'
+import { selectConcealedRepoIds } from './hidden-repo-visibility'
 
 /** Isolate store reads so sidebar, palette and keyboard shortcuts can share the pure visibility filter. */
 export function buildVisibleWorktreeOptionsFromState(
@@ -16,6 +17,7 @@ export function buildVisibleWorktreeOptionsFromState(
 ): VisibleWorktreeOptions {
   return {
     filterRepoIds: state.filterRepoIds,
+    hiddenRepoIds: selectConcealedRepoIds(state),
     showSleepingWorkspaces: state.showSleepingWorkspaces,
     tabsByWorktree: state.tabsByWorktree,
     ptyIdsByTabId: state.ptyIdsByTabId,

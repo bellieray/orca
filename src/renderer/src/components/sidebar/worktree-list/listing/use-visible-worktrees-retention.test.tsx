@@ -23,6 +23,7 @@ const args: Parameters<typeof useVisibleSidebarWorktrees>[0] = {
   filterState: {
     showSleepingWorkspaces: false,
     filterRepoIds: [],
+    hiddenRepoIds: [],
     hideDefaultBranchWorkspace: false,
     hideAutomationGeneratedWorkspaces: false,
     hideCliCreatedWorkspaces: false,

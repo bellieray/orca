@@ -163,6 +163,11 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
               ? persistedAgentsFilterRepoIds
               : persistedAgentsFilterRepoIds.filter((repoId) => validRepoIds.has(repoId))
           ),
+          // Not pruned against the catalog: an offline host's project must stay hidden when it returns.
+          hiddenRepoIds: preserveStringArrayIdentity(
+            s.hiddenRepoIds,
+            sanitizePersistedRepoIds(ui.hiddenRepoIds)
+          ),
           agentsHideWorkspacesFromOtherDevices: ui.agentsHideWorkspacesFromOtherDevices === true,
           agentsHideAutomationGeneratedWorkspaces:
             ui.agentsHideAutomationGeneratedWorkspaces === true,

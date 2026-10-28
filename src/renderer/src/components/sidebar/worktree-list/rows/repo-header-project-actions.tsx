@@ -4,6 +4,7 @@ import {
   CircleX,
   Ellipsis,
   Eye,
+  EyeOff,
   FolderInput,
   FolderTree,
   Plus,
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { getRepositoryIconSectionId } from '@/components/settings/repository/repository-settings-targets'
 import { WslMoveProjectMenuItem } from '@/components/wsl-move/WslMoveProjectMenuItem'
@@ -89,6 +91,8 @@ export function RepoHeaderProjectActionsMenu({
   projectGroups: readonly ProjectGroup[]
   actions: RepoHeaderProjectActions
 }): React.JSX.Element {
+  const isHidden = useAppStore((s) => s.hiddenRepoIds.includes(repo.id))
+  const setRepoHidden = useAppStore((s) => s.setRepoHidden)
   return (
     <DropdownMenu modal={false}>
       <Tooltip>
@@ -145,6 +149,12 @@ export function RepoHeaderProjectActionsMenu({
             {getWorktreeVisibilityMenuLabel(repo, actions.getWorktreeVisibilityDefaults(repo))}
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem onSelect={() => setRepoHidden(repo.id, !isHidden)}>
+          {isHidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          {isHidden
+            ? translate('sidebar.hiddenProjects.showProject', 'Show project')
+            : translate('sidebar.hiddenProjects.hideProject', 'Hide project')}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => actions.onCreateGroupFromRepo(repo)}>
           {/* Not FolderPlus: that now means "Add project" in the sidebar header above. */}
           <FolderTree className="size-3.5" />

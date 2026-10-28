@@ -63,6 +63,8 @@ export type SectionHeaderRowContext = {
   }) => FolderWorkspacePathStatus | null
   toggleGroupWithScrollAnchor: (groupKey: string) => void
   projectActions: RepoHeaderProjectActions
+  /** Hidden projects shown while revealed; their headers render dimmed. */
+  dimmedRepoIds: readonly string[]
   onRenameProjectGroup: (groupId: string, currentName: string, hostId?: ExecutionHostId) => void
   onDeleteProjectGroup: (groupId: string, groupName: string, hostId?: ExecutionHostId) => void
   onCreateFolderWorkspace: (projectGroup: ProjectGroup) => void
@@ -234,6 +236,7 @@ export function renderWorktreeSectionHeaderRow(args: {
           className={cn(
             // Keep grab on the title; action buttons use pointer cursors.
             'group relative flex h-7 w-full items-center gap-1.5 pr-2 text-left transition-all',
+            projectIdForHeader && ctx.dimmedRepoIds.includes(projectIdForHeader) && 'opacity-60',
             !(isDraggableRepoHeader || isDraggableProjectGroupHeader) && 'cursor-pointer',
             ctx.highlightedRevealRowKey === row.key &&
               'rounded-md bg-worktree-sidebar-accent ring-1 ring-worktree-sidebar-ring/50',

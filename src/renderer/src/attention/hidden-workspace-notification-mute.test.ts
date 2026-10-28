@@ -62,6 +62,11 @@ describe('isWorkspaceNotificationMutedBySidebarFilters', () => {
     expect(muted(CLI_ID)).toBe(false)
   })
 
+  it('never mutes a hidden project, which silences only the desktop and keeps unread and push', () => {
+    store.setState({ hiddenRepoIds: ['repo1'] })
+    expect(muted(PLAIN_ID)).toBe(false)
+  })
+
   it('fails open before settings or UI state hydrate, and for an unknown workspace', () => {
     expect(muted('repo1::/tmp/unknown')).toBe(false)
     store.setState({ persistedUIReady: false })

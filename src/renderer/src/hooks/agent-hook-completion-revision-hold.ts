@@ -28,6 +28,7 @@ const TERMINAL_REFUSALS: ReadonlySet<NotificationDispatchResult['reason']> = new
   'disabled',
   'source-disabled',
   'host-muted',
+  'hidden-project',
   'not-supported',
   'blocked-by-system',
   'invalid-request'

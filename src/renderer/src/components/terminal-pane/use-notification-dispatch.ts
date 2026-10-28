@@ -2,6 +2,7 @@ import {
   resolveTerminalNotificationOwner,
   type TerminalNotificationBinding
 } from '@/attention/notification-subject-owner'
+import { withHiddenProjectDesktopSuppression } from '@/attention/hidden-project-desktop-suppression'
 import {
   notificationExecutionHostForOwner,
   notificationSourceForOwner
@@ -166,18 +167,21 @@ export function dispatchTerminalNotification(
     const owner = resolveTerminalNotificationOwner(state, worktreeId, event)
     const executionHost = notificationExecutionHostForOwner(owner)
     deliverAgentAttentionNotification(
-      {
-        source: event.source,
-        ...(notificationId ? { notificationId } : {}),
-        worktreeId: request.workspaceId,
-        ...(executionHost ? { executionHost } : {}),
-        paneKey: request.subjectKey ?? undefined,
-        ...getNotificationWorkspaceLabels(state, request.workspaceId, event.terminalTitle),
-        notificationSourceId: notificationSourceForOwner(owner, state),
-        terminalTitle: event.terminalTitle,
-        isActiveWorktree: request.workspaceIsActive,
-        ...agentSnapshot
-      },
+      withHiddenProjectDesktopSuppression(
+        {
+          source: event.source,
+          ...(notificationId ? { notificationId } : {}),
+          worktreeId: request.workspaceId,
+          ...(executionHost ? { executionHost } : {}),
+          paneKey: request.subjectKey ?? undefined,
+          ...getNotificationWorkspaceLabels(state, request.workspaceId, event.terminalTitle),
+          notificationSourceId: notificationSourceForOwner(owner, state),
+          terminalTitle: event.terminalTitle,
+          isActiveWorktree: request.workspaceIsActive,
+          ...agentSnapshot
+        },
+        state
+      ),
       sound,
       event.onDispatchResult
     )

@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/workspace-view/workspace-row-filters'
 import { resolveVisibleWorkspaceHostIds } from '../../../../shared/workspace-view/workspace-host-visibility'
 import type { AppState } from '../../store/types'
+import { selectConcealedRepoIds } from './hidden-repo-visibility'
 import type { ExecutionHostId, ExecutionHostScope } from '../../../../shared/execution-host'
 
 export type SidebarFilterState = {
@@ -19,6 +20,8 @@ export type SidebarFilterState = {
   alwaysShowDefaultBranchWorkspace?: boolean
   visibleWorkspaceHostIds?: readonly ExecutionHostId[] | null
   workspaceHostScope?: ExecutionHostScope
+  /** The concealed projects (empty while revealed); never an active filter, so Clear filters keeps them. */
+  hiddenRepoIds?: readonly string[]
 }
 
 export function sidebarWorkspaceRowFilters(state: SidebarFilterState): WorkspaceRowFilters {
@@ -52,7 +55,8 @@ export function selectSidebarFilterState(
     hideWorkspacesFromOtherDevices: state.hideWorkspacesFromOtherDevices,
     alwaysShowDefaultBranchWorkspace: state.alwaysShowDefaultBranchWorkspace,
     visibleWorkspaceHostIds: state.visibleWorkspaceHostIds,
-    workspaceHostScope: state.workspaceHostScope
+    workspaceHostScope: state.workspaceHostScope,
+    hiddenRepoIds: selectConcealedRepoIds(state)
   }
 }
 

@@ -43,6 +43,8 @@ export function isWorkspaceNotificationMutedBySidebarFilters(
   const visibleIds = computeVisibleWorktreeIds(selectWorktreesByRepo(state), [], {
     ...inputs,
     filterRepoIds: [],
+    // Hidden projects silence only the desktop; muting here would also drop unread and push.
+    hiddenRepoIds: [],
     workspaceHostScope: ALL_EXECUTION_HOSTS_SCOPE,
     visibleWorkspaceHostIds: null
   })

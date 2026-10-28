@@ -55,6 +55,7 @@ describe('useVisibleSidebarWorktrees', () => {
         filterState: {
           showSleepingWorkspaces: true,
           filterRepoIds: [],
+          hiddenRepoIds: [],
           hideDefaultBranchWorkspace: false,
           hideAutomationGeneratedWorkspaces: false,
           hideCliCreatedWorkspaces: false,
@@ -90,6 +91,7 @@ describe('useVisibleSidebarWorktrees', () => {
         filterState: {
           showSleepingWorkspaces: true,
           filterRepoIds: [],
+          hiddenRepoIds: [],
           hideDefaultBranchWorkspace: false,
           hideAutomationGeneratedWorkspaces: false,
           hideCliCreatedWorkspaces: false,
@@ -121,6 +123,7 @@ describe('useVisibleSidebarWorktrees', () => {
       filterState: {
         showSleepingWorkspaces: true,
         filterRepoIds: [],
+        hiddenRepoIds: [],
         hideDefaultBranchWorkspace: false,
         hideAutomationGeneratedWorkspaces: false,
         hideCliCreatedWorkspaces: false,
@@ -176,6 +179,7 @@ describe('useVisibleSidebarWorktrees', () => {
         filterState: {
           showSleepingWorkspaces: true,
           filterRepoIds: [],
+          hiddenRepoIds: [],
           hideDefaultBranchWorkspace: false,
           hideAutomationGeneratedWorkspaces: false,
           hideCliCreatedWorkspaces: false,

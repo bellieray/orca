@@ -90,6 +90,8 @@ export type PersistedUIState = {
   agentsVisibleHostIds?: VisibleWorkspaceHostIds
   /** Agents-view project filter; empty = all projects. Separate from filterRepoIds (workspace nav). */
   agentsFilterRepoIds?: string[]
+  /** Projects concealed on this client only (privacy screen); never synced to other devices. */
+  hiddenRepoIds?: string[]
   /** Agents-view workspace-origin filters; separate from the workspace-nav hide flags. Absent means off. */
   agentsHideWorkspacesFromOtherDevices?: boolean
   agentsHideAutomationGeneratedWorkspaces?: boolean

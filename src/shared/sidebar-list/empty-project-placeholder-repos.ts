@@ -8,6 +8,7 @@ export function getEmptyProjectPlaceholderRepoIds(args: {
   worktreesByRepo: Readonly<Record<string, readonly Worktree[] | undefined>>
   visibleWorktrees: readonly Worktree[]
   filterRepoIds: readonly string[]
+  hiddenRepoIds?: readonly string[]
 }): Set<string> {
   if (args.groupBy !== 'repo') {
     return new Set()
@@ -17,7 +18,7 @@ export function getEmptyProjectPlaceholderRepoIds(args: {
   const visibleRepoIds = new Set(args.visibleWorktrees.map((worktree) => worktree.repoId))
   const placeholderRepoIds = new Set<string>()
   for (const repo of args.repos) {
-    if (filterSet && !filterSet.has(repo.id)) {
+    if ((filterSet && !filterSet.has(repo.id)) || args.hiddenRepoIds?.includes(repo.id)) {
       continue
     }
     const hasNoWorktrees = (args.worktreesByRepo[repo.id]?.length ?? 0) === 0

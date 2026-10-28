@@ -67,7 +67,10 @@ export function createNotificationDeliveryService(
   return {
     dispatch: (request) => {
       // Desktop gates must not suppress tray attention.
-      if (request.source === 'agent-task-complete' || request.source === 'terminal-bell') {
+      if (
+        !request.desktopSuppressed &&
+        (request.source === 'agent-task-complete' || request.source === 'terminal-bell')
+      ) {
         if (!deps.isWindowVisible(deps.findActiveWindow())) {
           deps.setTrayAttention(true)
         }
@@ -124,6 +127,9 @@ export function createNotificationDeliveryService(
         }
       }
 
+      if (request.desktopSuppressed) {
+        return { delivered: false, reason: 'hidden-project' }
+      }
       if (!desktopAllowed || hostMuted) {
         return {
           delivered: false,

@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+import { withoutConcealedRepos } from '../../hidden-repo-visibility'
 import type { SidebarListModel, SidebarListModelArgs } from './sidebar-list-model'
 import { useSidebarExternalWorktreeCards } from './use-external-worktree-cards'
 import { useSidebarHostVisibleScope } from './use-host-visible-scope'
@@ -21,7 +23,7 @@ export function useWindowSidebarListModel(args: SidebarListModelArgs): SidebarLi
     defaultHostId,
     agentSendTargetWorktreeId: args.agentSendTargetWorktreeId
   })
-  const visibleScope = useSidebarHostVisibleScope({
+  const hostVisibleScope = useSidebarHostVisibleScope({
     filterState,
     defaultHostId,
     repos,
@@ -29,6 +31,16 @@ export function useWindowSidebarListModel(args: SidebarListModelArgs): SidebarLi
     folderWorkspaces: args.folderWorkspaces,
     pairedDeviceIdsByEnvironment
   })
+  const visibleScope = useMemo(
+    () => ({
+      ...hostVisibleScope,
+      visibleReposForRows: withoutConcealedRepos(
+        hostVisibleScope.visibleReposForRows,
+        filterState.hiddenRepoIds
+      )
+    }),
+    [hostVisibleScope, filterState.hiddenRepoIds]
+  )
   const externalWorktreeCards = useSidebarExternalWorktreeCards({
     repos,
     visibleReposForRows: visibleScope.visibleReposForRows,

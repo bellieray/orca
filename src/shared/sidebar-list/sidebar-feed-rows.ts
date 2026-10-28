@@ -51,7 +51,7 @@ import type {
 import type { SidebarFeedDomains } from './sidebar-feed-domains'
 import { planSidebarRows } from './sidebar-row-plan'
 import type { SortBy } from './smart-sort'
-import { selectVisibleSidebarWorktrees } from './visible-worktrees'
+import { getFeedRepoScope, selectVisibleSidebarWorktrees } from './visible-worktrees'
 import { isIdleWorkspaceActivity } from './workspace-activity-facts'
 import { prGroupOfReviewFact } from './workspace-review-facts'
 
@@ -61,7 +61,7 @@ export type SidebarFeedView = {
   sortBy: SortBy
   projectOrderBy: ProjectOrderBy
   collapsedGroups: ReadonlySet<string>
-  filters: WorkspaceRowFilters
+  filters: WorkspaceRowFilters & { hiddenRepoIds?: readonly string[] }
   workspaceHostScope: ExecutionHostScope
   visibleWorkspaceHostIds: readonly ExecutionHostId[] | null
   workspaceStatuses: readonly WorkspaceStatusDefinition[]
@@ -182,7 +182,7 @@ export function planSidebarFeedRows(
       }
     },
     worktreeLineageById: lineageById,
-    filterRepoIds: view.filters.filterRepoIds,
+    ...getFeedRepoScope(view),
     preserveLineageParentOrder: view.sortBy === 'manual',
     forcedVisibleWorktreeIds: extras.forcedVisibleWorktreeIds
   })
@@ -221,7 +221,7 @@ export function planSidebarFeedRows(
     repos: visibleRepos,
     worktreesByRepo,
     visibleWorktrees,
-    filterRepoIds: view.filters.filterRepoIds
+    ...getFeedRepoScope(view)
   })
   // The catalog's order, not the feed's repoOrder: only it places a paired server's projects.
   const repoOrder = getLogicalRepoOrderRankById(repos.map((repo) => repo.id))

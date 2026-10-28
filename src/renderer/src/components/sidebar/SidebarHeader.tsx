@@ -10,6 +10,9 @@ import { Sparkles, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AgentQuestionIcon } from '@/components/AgentQuestionIcon'
 import { useAgentBucketCounts } from '@/components/dashboard/useAgentBucketCounts'
+import { selectHiddenProjectUnreadCount } from '@/lib/unread-badge-count-selector'
+import { OptionsFilterCountBadge } from './options-filter-count-badge'
+import { SidebarHiddenProjectsToggle } from './SidebarHiddenProjectsToggle'
 
 type SidebarHeaderProps = {
   onWorkspaceBoardMenuOpenChange: (open: boolean) => void
@@ -26,6 +29,7 @@ const SidebarHeader = React.memo(function SidebarHeader({
   const groupBy = useAppStore((s) => s.groupBy)
   const setSidebarBody = useAppStore((s) => s.setSidebarBody)
   const updateSettings = useAppStore((s) => s.updateSettings)
+  const hiddenProjectUnreadCount = useAppStore(selectHiddenProjectUnreadCount)
   const agentsViewActive = sidebarBody === 'agents'
   const counts = useAgentBucketCounts()
   const activityBadgeId = useId()
@@ -59,14 +63,31 @@ const SidebarHeader = React.memo(function SidebarHeader({
     <div className="mt-2 flex h-8 min-w-0 shrink-0 items-center justify-between gap-1.5 px-2">
       <div className="flex min-w-0 items-center gap-1">
         <span
-          // Truncate localized titles because fixed-width actions cannot shrink inside the short header row.
-          className="min-w-0 truncate select-none pl-2 pr-0.5 text-xs font-semibold text-muted-foreground/80"
-          data-sidebar-section-title={groupBy === 'repo' ? 'projects' : 'workspaces'}
+          className={cn('relative flex min-w-0', hiddenProjectUnreadCount > 0 && 'pr-3')}
+          title={
+            hiddenProjectUnreadCount > 0
+              ? translate(
+                  'sidebar.hiddenProjects.unreadCount',
+                  '{{count}} unread in hidden projects',
+                  {
+                    count: hiddenProjectUnreadCount
+                  }
+                )
+              : undefined
+          }
         >
-          {sidebarTitle}
+          <span
+            // Truncate localized titles because fixed-width actions cannot shrink inside the short header row.
+            className="min-w-0 truncate select-none pl-2 pr-0.5 text-xs font-semibold text-muted-foreground/80"
+            data-sidebar-section-title={groupBy === 'repo' ? 'projects' : 'workspaces'}
+          >
+            {sidebarTitle}
+          </span>
+          <OptionsFilterCountBadge count={hiddenProjectUnreadCount} />
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <SidebarHiddenProjectsToggle />
         <Popover
           open={introOpen}
           onOpenChange={(open) => {

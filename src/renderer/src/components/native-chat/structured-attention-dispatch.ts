@@ -24,6 +24,7 @@ import {
   readAgentAttentionNotificationSound
 } from '@/attention/agent-attention-notification-delivery'
 import { useAppStore } from '@/store'
+import { withHiddenProjectDesktopSuppression } from '@/attention/hidden-project-desktop-suppression'
 import { getNotificationWorkspaceLabels } from '../terminal-pane/terminal-notification-state'
 import { createStructuredAttentionSurface } from './structured-attention-surface'
 import type { StructuredTab } from './structured-agent-session-tabs'
@@ -103,30 +104,33 @@ function dispatchStructuredAttention(
           : resolveNotificationTabOwner(state, tab)
       const executionHost = notificationExecutionHostForOwner(owner)
       deliverAgentAttentionNotification(
-        {
-          source: 'agent-task-complete',
-          surface: 'agent-session',
-          // Shared phone/desktop ids let subject-based acknowledgment retire both notifications.
-          notificationId: attentionKey,
-          attentionKey,
-          structuredOrigin: origin,
-          // A local session's host is this app's own main, which already pushed its phones.
-          ...(subscriptionTarget?.kind === 'local' ? { mobileDeliveredByHost: true } : {}),
-          worktreeId: request.workspaceId,
-          ...(executionHost ? { executionHost } : {}),
-          paneKey: request.subjectKey ?? undefined,
-          ...getNotificationWorkspaceLabels(state, request.workspaceId, tab.label),
-          notificationSourceId: notificationSourceForOwner(owner, state),
-          terminalTitle: tab.label,
-          isActiveWorktree: request.workspaceIsActive,
-          ...(row?.agentType ? { agentType: row.agentType } : {}),
-          agentState: news.agentState,
-          ...(news.outcome ? { agentTurnOutcome: news.outcome } : {}),
-          ...(row?.prompt ? { agentPrompt: row.prompt } : {}),
-          ...(row?.lastAssistantMessage
-            ? { agentLastAssistantMessage: row.lastAssistantMessage }
-            : {})
-        },
+        withHiddenProjectDesktopSuppression(
+          {
+            source: 'agent-task-complete',
+            surface: 'agent-session',
+            // Shared phone/desktop ids let subject-based acknowledgment retire both notifications.
+            notificationId: attentionKey,
+            attentionKey,
+            structuredOrigin: origin,
+            // A local session's host is this app's own main, which already pushed its phones.
+            ...(subscriptionTarget?.kind === 'local' ? { mobileDeliveredByHost: true } : {}),
+            worktreeId: request.workspaceId,
+            ...(executionHost ? { executionHost } : {}),
+            paneKey: request.subjectKey ?? undefined,
+            ...getNotificationWorkspaceLabels(state, request.workspaceId, tab.label),
+            notificationSourceId: notificationSourceForOwner(owner, state),
+            terminalTitle: tab.label,
+            isActiveWorktree: request.workspaceIsActive,
+            ...(row?.agentType ? { agentType: row.agentType } : {}),
+            agentState: news.agentState,
+            ...(news.outcome ? { agentTurnOutcome: news.outcome } : {}),
+            ...(row?.prompt ? { agentPrompt: row.prompt } : {}),
+            ...(row?.lastAssistantMessage
+              ? { agentLastAssistantMessage: row.lastAssistantMessage }
+              : {})
+          },
+          state
+        ),
         sound
       )
     }

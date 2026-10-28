@@ -94,6 +94,7 @@ export const visibilityArgs: Parameters<typeof useVisibleSidebarWorktrees>[0] = 
   filterState: {
     showSleepingWorkspaces: true,
     filterRepoIds: [],
+    hiddenRepoIds: [],
     hideDefaultBranchWorkspace: false,
     hideAutomationGeneratedWorkspaces: false,
     hideCliCreatedWorkspaces: false,
