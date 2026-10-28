@@ -1,5 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useAppStore } from '@/store'
+import {
+  selectUnconcealedActiveRepoId,
+  selectUnconcealedRepos
+} from '@/components/sidebar/hidden-repo-visibility'
 import { runWorktreeDelete } from '@/components/sidebar/delete-worktree-flow'
 import {
   buildCmdJQuickActionContext,
@@ -25,13 +29,15 @@ function getComposerPrefetchRepoId(
   state: ReturnType<typeof useAppStore.getState>,
   initialRepoId?: string
 ): string | null {
+  const repos = selectUnconcealedRepos(state)
+  const eligibleRepos = getComposerEligibleRepos(repos)
   return resolveComposerGitRepoId({
-    eligibleRepos: getComposerEligibleRepos(state.repos),
+    eligibleRepos,
     initialRepoId,
     activeRepoId: resolveComposerActiveRepoId(
-      state.repos,
-      getComposerEligibleRepos(state.repos),
-      state.activeRepoId
+      repos,
+      eligibleRepos,
+      selectUnconcealedActiveRepoId(state)
     ),
     focusedHostScope: state.workspaceHostScope
   })

@@ -78,35 +78,45 @@ function navigateAwayFromConcealedWorkspace(state: AppState): void {
     buildVisibleWorktreeOptionsFromState(state, getIndexedRepoMap(state.repos))
   )
   const fallback = pickConcealedActiveWorkspaceFallback(state, visible)
-  if (fallback.kind === 'switch') {
-    // Navigation only: the hidden workspace's terminals keep running.
-    if (
-      state.setActiveWorktree(
-        fallback.worktree.id,
-        getPaletteWorktreeExecutionHostId(fallback.worktree)
-      )
-    ) {
-      return
-    }
-  }
-  if (fallback.kind !== 'keep') {
+  // Navigation only: the hidden workspace's terminals keep running.
+  const switched =
+    fallback.kind === 'switch' &&
+    state.setActiveWorktree(
+      fallback.worktree.id,
+      getPaletteWorktreeExecutionHostId(fallback.worktree)
+    )
+  if (!switched && fallback.kind !== 'keep') {
     state.setActiveWorktree(null)
   }
 }
 
+/** Clearing the workspace leaves activeRepoId behind; it drives create defaults and prefetch, so drop it too. */
+function clearConcealedActiveRepo(state: AppState): void {
+  const repoId = state.activeRepoId
+  if (state.persistedUIReady && repoId && selectConcealedRepoIds(state).includes(repoId)) {
+    state.setActiveRepo(null)
+  }
+}
+
+function guard(getState: () => AppState): void {
+  navigateAwayFromConcealedWorkspace(getState())
+  clearConcealedActiveRepo(getState())
+}
+
 /** Runs on hide, on reveal-off and as soon as persisted UI state (hidden list + restored selection) is ready at startup. */
 export function installHiddenProjectActiveWorkspaceGuard(): () => void {
-  navigateAwayFromConcealedWorkspace(useAppStore.getState())
+  guard(useAppStore.getState)
   return useAppStore.subscribe((state, previous) => {
     if (
       state.activeWorktreeId === previous.activeWorktreeId &&
+      state.activeRepoId === previous.activeRepoId &&
       state.hiddenRepoIds === previous.hiddenRepoIds &&
       state.revealHiddenRepos === previous.revealHiddenRepos &&
       state.persistedUIReady === previous.persistedUIReady
     ) {
       return
     }
-    navigateAwayFromConcealedWorkspace(state)
+    guard(useAppStore.getState)
   })
 }
 

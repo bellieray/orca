@@ -26,6 +26,13 @@ export function selectDimmedRepoIds(state: HiddenRepoState): readonly string[] {
 }
 
 /** Repos a default target may pick right now: every repo except concealed ones. */
+export function selectUnconcealedActiveRepoId(
+  state: HiddenRepoState & Pick<AppState, 'activeRepoId'>
+): string | null {
+  const id = state.activeRepoId
+  return id && selectConcealedRepoIds(state).includes(id) ? null : id
+}
+
 export function selectUnconcealedRepos(state: HiddenRepoState & Pick<AppState, 'repos'>) {
   return withoutConcealedRepos(state.repos, selectConcealedRepoIds(state))
 }

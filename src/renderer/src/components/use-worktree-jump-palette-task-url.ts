@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '@/store'
 import {
+  selectUnconcealedActiveRepoId,
+  selectUnconcealedRepos
+} from '@/components/sidebar/hidden-repo-visibility'
+import {
   getComposerEligibleRepos,
   resolveComposerActiveRepoId
 } from '@/lib/new-workspace-composer-repo'
@@ -35,8 +39,14 @@ export type CmdJGitHubWorkItemPreview = {
 }
 
 function getComposerDefaultWorkspaceTarget(state: ReturnType<typeof useAppStore.getState>) {
-  const eligibleRepos = getComposerEligibleRepos(state.repos)
-  const activeRepoId = resolveComposerActiveRepoId(state.repos, eligibleRepos, state.activeRepoId)
+  // Hidden projects must not become the explicit initialRepoId of a Cmd+J URL create.
+  const repos = selectUnconcealedRepos(state)
+  const eligibleRepos = getComposerEligibleRepos(repos)
+  const activeRepoId = resolveComposerActiveRepoId(
+    repos,
+    eligibleRepos,
+    selectUnconcealedActiveRepoId(state)
+  )
   const resolution = resolveWorkspaceCreationTarget({
     eligibleRepos,
     projects: state.projects,

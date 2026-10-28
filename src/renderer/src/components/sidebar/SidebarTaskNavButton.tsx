@@ -12,6 +12,7 @@ import { PER_REPO_FETCH_LIMIT } from '@/lib/new-workspace'
 import { getLocalPreflightContext, localPreflightContextKey } from '@/lib/local-preflight-context'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
+import { selectConcealedRepoIds } from './hidden-repo-visibility'
 import { useRepoMap } from '@/store/selectors'
 import { translate } from '@/i18n/i18n'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
@@ -75,6 +76,7 @@ export function SidebarTaskNavButton(): React.JSX.Element | null {
   const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
   const prefetchWorkItems = useAppStore((s) => s.prefetchWorkItems)
   const activeRepoId = useAppStore((s) => s.activeRepoId)
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
   const defaultTaskViewPreset = useAppStore((s) => s.settings?.defaultTaskViewPreset ?? 'all')
   const preferredVisibleTaskProviders = React.useMemo(
     () => normalizeVisibleTaskProviders(rawVisibleTaskProviders),
@@ -125,7 +127,10 @@ export function SidebarTaskNavButton(): React.JSX.Element | null {
     }
     const activeRepo = activeRepoId ? (repoMap.get(activeRepoId) ?? null) : null
     const activeGitRepo = activeRepo && isGitRepoKind(activeRepo) ? activeRepo : null
-    const firstGitRepo = activeGitRepo ?? repos.find((r) => isGitRepoKind(r))
+    // Never prefetch a hidden project's work items.
+    const firstGitRepo = [activeGitRepo, ...repos].find(
+      (r) => r != null && isGitRepoKind(r) && !concealedRepoIds.includes(r.id)
+    )
     if (firstGitRepo?.path) {
       prefetchWorkItems(
         firstGitRepo.id,
@@ -136,6 +141,7 @@ export function SidebarTaskNavButton(): React.JSX.Element | null {
     }
   }, [
     activeRepoId,
+    concealedRepoIds,
     defaultTaskViewPreset,
     prefetchWorkItems,
     repoMap,
