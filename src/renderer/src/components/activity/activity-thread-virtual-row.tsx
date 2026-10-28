@@ -1,5 +1,7 @@
 import type React from 'react'
 import { translate } from '@/i18n/i18n'
+import { useAppStore } from '@/store'
+import { selectDimmedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 import { clearActivityThread, isClearableActivityThread } from './activity-clear-completed'
 import { ActivityStatusGroupHeader } from './activity-thread-controls'
 import { ActivityThreadContextMenu } from './activity-thread-context-menu'
@@ -46,7 +48,15 @@ export function ActivityThreadVirtualRow({
   compactMode: boolean
   showJumpAction: boolean
 }): React.JSX.Element {
+  // Reveal mode only: hidden projects stay dimmed like their sidebar rows.
+  const dimmedRepoIds = useAppStore(selectDimmedRepoIds)
+  const isDimmedThread = (thread: AgentPaneThread): boolean =>
+    thread.repo !== null && dimmedRepoIds.includes(thread.repo.id)
   if (item.type === 'header') {
+    const dimHeader =
+      dimmedRepoIds.length > 0 &&
+      item.group.threads.length > 0 &&
+      item.group.threads.every(isDimmedThread)
     return (
       <div
         role="group"
@@ -55,7 +65,7 @@ export function ActivityThreadVirtualRow({
           '{{value0}} activity',
           { value0: item.group.label }
         )}
-        className="pb-1"
+        className={dimHeader ? 'pb-1 opacity-60' : 'pb-1'}
       >
         <ActivityStatusGroupHeader
           group={item.group}
@@ -82,7 +92,7 @@ export function ActivityThreadVirtualRow({
     >
       {(menuOpen) => (
         // Wrap the row: stacking two Radix triggers on its hover target would compose their refs.
-        <div className="pb-0.5">
+        <div className={isDimmedThread(item.thread) ? 'pb-0.5 opacity-60' : 'pb-0.5'}>
           <ActivityThreadRow
             thread={item.thread}
             selected={isOpen}

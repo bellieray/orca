@@ -14,6 +14,7 @@ import {
 import { getStructuredChatWorktreeIds } from './visible-worktree-activity-inputs'
 import { getWorktreeHostIdentity } from '../../../../shared/worktree/host-qualified-identity'
 import { selectWorktreesByRepo } from '@/store/workspace-record-selectors'
+import { selectConcealedRepoIds } from './hidden-repo-visibility'
 
 type UseVisibleWorkspaceKanbanWorktreeIdsParams = {
   allWorktrees: readonly Worktree[]
@@ -48,6 +49,7 @@ export function useVisibleWorkspaceKanbanWorktreeIds({
   const visibleWorkspaceHostIds = useAppStore((s) => s.visibleWorkspaceHostIds)
   const settings = useAppStore((s) => s.settings)
   const filterRepoIds = useAppStore((s) => s.filterRepoIds)
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
   const tabsByWorktree = useAppStore((s) => (!showSleepingWorkspaces ? s.tabsByWorktree : null))
   const ptyIdsByTabId = useAppStore((s) => (!showSleepingWorkspaces ? s.ptyIdsByTabId : null))
   const browserTabsByWorktree = useAppStore((s) =>
@@ -81,6 +83,7 @@ export function useVisibleWorkspaceKanbanWorktreeIds({
     return new Set(
       computeVisibleWorktrees(worktreesByRepo, sortedIds, {
         filterRepoIds,
+        hiddenRepoIds: concealedRepoIds,
         showSleepingWorkspaces,
         tabsByWorktree,
         ptyIdsByTabId,
@@ -108,6 +111,7 @@ export function useVisibleWorkspaceKanbanWorktreeIds({
   }, [
     allWorktrees,
     browserTabsByWorktree,
+    concealedRepoIds,
     filterRepoIds,
     hideDefaultBranchWorkspace,
     hideAutomationGeneratedWorkspaces,

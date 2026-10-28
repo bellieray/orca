@@ -14,8 +14,8 @@ import { getLineageAncestorIndex, getSortedWorktreeRankIndex } from './visible-w
 
 export type VisibleWorktreeOptions = {
   filterRepoIds: readonly string[]
-  /** Empty while hidden projects are revealed. */
-  hiddenRepoIds?: readonly string[]
+  /** Concealed projects (selectConcealedRepoIds); empty while hidden projects are revealed. Required so no caller forgets it. */
+  hiddenRepoIds: readonly string[]
   showSleepingWorkspaces: boolean
   tabsByWorktree: Record<string, Pick<TerminalTab, 'id'>[]> | null
   ptyIdsByTabId: Record<string, string[]> | null

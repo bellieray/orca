@@ -28,6 +28,7 @@ import { useCodexSharedSettingsNotice } from '../components/terminal-pane/codex-
 import { useVisibleReviewRefreshReporting } from './use-visible-review-refresh-reporting'
 import { useVisibleHostedReviewRefresh } from './use-visible-hosted-review-refresh'
 import { useProfileStateSaveDelayNotice } from './use-profile-state-save-delay-notice'
+import { useHiddenProjectActiveWorkspaceGuard } from '../components/sidebar/hidden-project-active-workspace-guard'
 
 /** Keep subscriptions above surfaces that unmount or never appear on Landing. */
 export function useAppShellServices(): void {
@@ -43,6 +44,7 @@ export function useAppShellServices(): void {
   useLocalStructuredSessionTabsSync()
   useHostStructuredAgentsSync()
   useLegacyChatRenameMigration()
+  useHiddenProjectActiveWorkspaceGuard()
   useHostModelCatalogSnapshotsSync()
   useIpcEvents()
   useProfileStateSaveDelayNotice()

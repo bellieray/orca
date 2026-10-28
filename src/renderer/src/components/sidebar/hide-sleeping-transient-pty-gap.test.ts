@@ -53,6 +53,7 @@ const tabsByWorktree = {
 function visibleOptions(overrides: Partial<VisibleOptions> = {}): VisibleOptions {
   return {
     filterRepoIds: [],
+    hiddenRepoIds: [],
     showSleepingWorkspaces: false,
     tabsByWorktree,
     ptyIdsByTabId: { 'tab-remote': ['remote:pty-1'], 'tab-other': ['remote:pty-2'] },

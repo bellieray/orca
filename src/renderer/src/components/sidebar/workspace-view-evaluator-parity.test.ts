@@ -240,6 +240,7 @@ describe('the shared Workspace options evaluator matches the sidebar it replaced
         rows.map((w) => w.id),
         {
           ...t,
+          hiddenRepoIds: [],
           tabsByWorktree,
           ptyIdsByTabId,
           browserTabsByWorktree: {},
@@ -350,6 +351,7 @@ describe('the desktop row fact reader', () => {
     expect(
       computeVisibleWorktreeIds({ folder: [folder] }, [folder.id], {
         filterRepoIds: ['not-selected'],
+        hiddenRepoIds: [],
         showSleepingWorkspaces: false,
         tabsByWorktree: {},
         ptyIdsByTabId: {},

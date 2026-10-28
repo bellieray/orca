@@ -61,6 +61,7 @@ function visibleWithHideDefault(
     worktrees.map((worktree) => worktree.id),
     {
       filterRepoIds: [],
+      hiddenRepoIds: [],
       showSleepingWorkspaces: true,
       tabsByWorktree: {},
       ptyIdsByTabId: {},

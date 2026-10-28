@@ -84,6 +84,7 @@ function visibleOptions(
 ): Parameters<typeof computeVisibleWorktrees>[2] {
   return {
     filterRepoIds: [],
+    hiddenRepoIds: [],
     showSleepingWorkspaces: true,
     tabsByWorktree: null,
     ptyIdsByTabId: null,

@@ -5,7 +5,11 @@ import { useAppStore } from '@/store'
 import { usePluginCommands } from '@/store/plugin-panels'
 import { useSettingsNavigationMetadata } from '@/hooks/useSettingsNavigationMetadata'
 import { dedupePaletteWorktrees } from '@/lib/palette-repo-resolution'
-import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
+import {
+  selectConcealedRepoIds,
+  withoutConcealedRepos
+} from '@/components/sidebar/hidden-repo-visibility'
+import { withoutConcealedProjectGroups } from '../../../shared/sidebar-list/concealed-project-groups'
 import { getFolderWorkspaceWorktree } from '@/store/slices/worktrees/listing/detected-worktree-meta'
 import {
   selectPaletteIndexStatusSnapshot,
@@ -48,8 +52,22 @@ export function useWorktreeJumpPaletteStoreState({
       ]),
     [concealedRepoIds, folderWorkspaces, worktreesByRepo]
   )
-  const repos = useAppStore((state) => state.repos)
-  const projectGroups = useAppStore((state) => state.projectGroups)
+  const allRepos = useAppStore((state) => state.repos)
+  const allProjectGroups = useAppStore((state) => state.projectGroups)
+  // Hidden projects must not surface in the filter menu, project search or create defaults.
+  const repos = useMemo(
+    () => withoutConcealedRepos(allRepos, concealedRepoIds),
+    [allRepos, concealedRepoIds]
+  )
+  const projectGroups = useMemo(
+    () =>
+      withoutConcealedProjectGroups(allProjectGroups, {
+        repos: allRepos,
+        folderWorkspaces,
+        hiddenRepoIds: concealedRepoIds
+      }),
+    [allProjectGroups, allRepos, concealedRepoIds, folderWorkspaces]
+  )
   const projects = useAppStore((state) => state.projects)
   const projectHostSetups = useAppStore((state) => state.projectHostSetups)
   const detectedWorktreesByRepo = useAppStore((state) => selectDetectedWorktreesByRepo(state))

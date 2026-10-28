@@ -119,6 +119,7 @@ describe('useVisibleSidebarWorktrees', () => {
     const worktree = makeWorktree('alpha', 'Alpha workspace', { hostId: 'local' })
     useAppStore.setState({ worktreesByRepo: { [repo.id]: [worktree] } })
 
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture; the code under test reads only the fields set here.
     const baseArgs = {
       filterState: {
         showSleepingWorkspaces: true,

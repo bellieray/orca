@@ -24,3 +24,8 @@ export function withoutConcealedRepos<T extends { id: string }>(
 export function selectDimmedRepoIds(state: HiddenRepoState): readonly string[] {
   return state.revealHiddenRepos ? state.hiddenRepoIds : NO_REPO_IDS
 }
+
+/** Repos a default target may pick right now: every repo except concealed ones. */
+export function selectUnconcealedRepos(state: HiddenRepoState & Pick<AppState, 'repos'>) {
+  return withoutConcealedRepos(state.repos, selectConcealedRepoIds(state))
+}

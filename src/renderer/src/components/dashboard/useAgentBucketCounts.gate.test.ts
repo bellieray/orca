@@ -161,6 +161,7 @@ describe('agent bucket count input gate', () => {
   it('leaves concealed projects out of the counted repos until revealed', () => {
     const shown = { id: 'shown' }
     const hidden = { id: 'hidden' }
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture; the code under test reads only the fields set here.
     const state = {
       ...storeState(),
       repos: [shown, hidden],
@@ -170,9 +171,9 @@ describe('agent bucket count input gate', () => {
     const concealed = selectAgentBucketCountState(state)
     expect(concealed.repos).toEqual([shown])
     // Unrelated writes keep the filtered repos identity, so the gate still holds.
-    expect(selectAgentBucketCountState({ ...state } as unknown as AppState)).toBe(concealed)
+    expect(selectAgentBucketCountState({ ...state })).toBe(concealed)
 
-    const revealed = { ...state, revealHiddenRepos: true } as unknown as AppState
+    const revealed: AppState = { ...state, revealHiddenRepos: true }
     expect(selectAgentBucketCountState(revealed).repos).toBe(state.repos)
   })
 })

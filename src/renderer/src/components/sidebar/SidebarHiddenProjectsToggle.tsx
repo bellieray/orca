@@ -4,7 +4,6 @@ import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 
 /** Session-only reveal of hidden projects; absent while nothing is hidden. */
 export function SidebarHiddenProjectsToggle(): React.JSX.Element | null {
@@ -26,13 +25,8 @@ export function SidebarHiddenProjectsToggle(): React.JSX.Element | null {
       <TooltipTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
+          variant={revealed ? 'secondary' : 'ghost'}
           size="icon-xs"
-          className={cn(
-            'text-muted-foreground',
-            revealed &&
-              'bg-foreground/10 text-foreground hover:bg-foreground/15 dark:hover:bg-foreground/15'
-          )}
           aria-label={label}
           aria-pressed={revealed}
           data-sidebar-hidden-projects-toggle=""

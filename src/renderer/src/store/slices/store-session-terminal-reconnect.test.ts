@@ -96,6 +96,7 @@ describe.each([false, true])('reconnectPersistedTerminals (layout owner is main:
     expect(
       computeVisibleWorktreeIds(s.worktreesByRepo, [wt1, wt2], {
         filterRepoIds: [],
+        hiddenRepoIds: [],
         showSleepingWorkspaces: false,
         tabsByWorktree: s.tabsByWorktree,
         ptyIdsByTabId: s.ptyIdsByTabId,
@@ -432,6 +433,7 @@ describe.each([false, true])('reconnectPersistedTerminals (layout owner is main:
     expect(
       computeVisibleWorktreeIds(s.worktreesByRepo, [wt1], {
         filterRepoIds: [],
+        hiddenRepoIds: [],
         showSleepingWorkspaces: false,
         tabsByWorktree: s.tabsByWorktree,
         ptyIdsByTabId: s.ptyIdsByTabId,

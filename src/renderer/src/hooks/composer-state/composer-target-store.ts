@@ -15,6 +15,7 @@ import type { LinkedWorkItemSummary } from '@/lib/new-workspace'
 import type { ComposerDecisions } from './composer-decisions'
 import type { WorkspaceCreationTargetHint } from '@/lib/project-host-workspace-target'
 import { selectWorktreesByRepo } from '@/store/workspace-record-selectors'
+import { selectConcealedRepoIds } from '@/components/sidebar/hidden-repo-visibility'
 import { selectAllKnownWorkspaceStatuses } from '@/store/host-workspace-status-columns'
 
 export type ComposerStateInput = {
@@ -125,7 +126,16 @@ export function useComposerTargetStore(options: ComposerStateInput, decisions: C
 
   const workspaceHostScope = useAppStore((s) => s.workspaceHostScope)
 
-  const eligibleRepos = useMemo(() => getComposerEligibleRepos(repos), [repos])
+  const concealedRepoIds = useAppStore(selectConcealedRepoIds)
+
+  // Hidden projects are never a default target; an explicitly requested repo stays eligible.
+  const eligibleRepos = useMemo(
+    () =>
+      getComposerEligibleRepos(repos).filter(
+        (repo) => repo.id === initialRepoId || !concealedRepoIds.includes(repo.id)
+      ),
+    [repos, concealedRepoIds, initialRepoId]
+  )
 
   const hostOptions = useMemo(
     () =>
@@ -154,10 +164,10 @@ export function useComposerTargetStore(options: ComposerStateInput, decisions: C
     [hostOptions]
   )
 
-  const seedActiveRepoId = useMemo(
-    () => resolveComposerActiveRepoId(repos, eligibleRepos, activeRepoId),
-    [repos, eligibleRepos, activeRepoId]
-  )
+  const seedActiveRepoId = useMemo(() => {
+    const resolved = resolveComposerActiveRepoId(repos, eligibleRepos, activeRepoId)
+    return resolved && concealedRepoIds.includes(resolved) ? null : resolved
+  }, [repos, eligibleRepos, activeRepoId, concealedRepoIds])
 
   return {
     initialRepoId,

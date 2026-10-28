@@ -1,4 +1,5 @@
 import { worktreeMatchesGitHubNumber } from '@/lib/github-work-item-workspace-attachment'
+import { selectUnconcealedRepos } from '@/components/sidebar/hidden-repo-visibility'
 import { getPaletteWorktreeExecutionHostId } from '@/lib/palette-repo-resolution'
 import { findRepoForHost } from '@/store/slices/repo-host-identity'
 import { parseGitHubIssueOrPRLink, parseGitHubIssueOrPRNumber } from '@/lib/github-links'
@@ -198,7 +199,7 @@ export function createWorktreeJumpPaletteWorktreeHandler({
 
     if (taskUrlCreatePreview) {
       const state = useAppStore.getState()
-      const eligibleRepos = state.repos.filter((repo) => isGitRepoKind(repo))
+      const eligibleRepos = selectUnconcealedRepos(state).filter((repo) => isGitRepoKind(repo))
       const repo =
         (state.activeRepoId &&
           eligibleRepos.find((candidate) => candidate.id === state.activeRepoId)) ||

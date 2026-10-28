@@ -52,6 +52,13 @@
     "startupWorktreeRefresh": {
       "loading": "Çalışma alanları bulunuyor…",
       "description": "Yerel ve uzak projeler yüklenirken daha fazla çalışma alanı görünebilir."
+    },
+    "hiddenProjects": {
+      "hideProject": "Projeyi gizle",
+      "showProject": "Projeyi göster",
+      "reveal": "Gizli projeleri göster",
+      "conceal": "Gizli projeleri yeniden gizle",
+      "unreadCount": "Gizli projelerde {{count}} okunmamış"
     }
   },
   "app": {

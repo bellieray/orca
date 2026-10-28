@@ -20,6 +20,7 @@ function scenario(hostId: ExecutionHostId) {
   }
   const options: VisibleWorktreeOptions = {
     filterRepoIds: [],
+    hiddenRepoIds: [],
     showSleepingWorkspaces: true,
     tabsByWorktree: {},
     ptyIdsByTabId: {},
