@@ -3,6 +3,8 @@ import type { Repo } from '../../../shared/repo-types'
 import type { GitRemoteIdentity } from '../../../shared/git-remote-identity'
 import { normalizeRepoBadgeColor } from '../../../shared/repo-badge-color'
 import { sanitizeRepoIcon } from '../../../shared/repo-icon'
+import { normalizeRepoConnectedAccounts } from '../../../shared/connected-accounts/connected-accounts-normalize'
+import type { RepoConnectedAccounts } from '../../../shared/connected-accounts/connected-accounts-types'
 import { normalizeGhAccountBinding } from '../../../shared/github/account-binding'
 import { normalizeJiraProjectReference } from '../../../shared/jira/jira-project-reference'
 import type { GhAccountBinding } from '../../../shared/github/account-binding'
@@ -81,6 +83,7 @@ export function sanitizeRepoUpdatesForPersistence<
     >
   > & {
     ghAccount?: GhAccountBinding | null
+    connectedAccounts?: RepoConnectedAccounts | null
   }
 >(updates: T): T {
   const sanitized = { ...updates }
@@ -155,6 +158,15 @@ export function sanitizeRepoUpdatesForPersistence<
       delete sanitized.ghAccount
     } else {
       sanitized.ghAccount = ghAccount
+    }
+  }
+  // Null explicitly clears connectedAccounts; empty or malformed shapes are discarded.
+  if ('connectedAccounts' in sanitized && sanitized.connectedAccounts != null) {
+    const connectedAccounts = normalizeRepoConnectedAccounts(sanitized.connectedAccounts)
+    if (!connectedAccounts) {
+      delete sanitized.connectedAccounts
+    } else {
+      sanitized.connectedAccounts = connectedAccounts
     }
   }
   if ('customWorktreeVisibilitySources' in sanitized) {

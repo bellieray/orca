@@ -677,6 +677,30 @@ describe('Store', () => {
     expect(cleared!.ghAccount).toBeUndefined()
   })
 
+  it('updateRepo persists, normalizes and clears connectedAccounts', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo())
+
+    const updated = store.updateRepo(
+      { id: 'r1' },
+      { connectedAccounts: { claudeAccountId: 'a', extraEnv: [{ key: 'GIT_DIR', value: 'x' }] } }
+    )
+    expect(updated!.connectedAccounts).toEqual({ claudeAccountId: 'a' })
+
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getRepo('r1')!.connectedAccounts).toEqual({ claudeAccountId: 'a' })
+
+    const malformed = reloaded.updateRepo({ id: 'r1' }, { connectedAccounts: {} })
+    expect(malformed!.connectedAccounts).toEqual({ claudeAccountId: 'a' })
+
+    const cleared = reloaded.updateRepo({ id: 'r1' }, { connectedAccounts: null })
+    expect(cleared!.connectedAccounts).toBeUndefined()
+    reloaded.flush()
+    const afterClear = await createStore()
+    expect(afterClear.getRepo('r1')).not.toHaveProperty('connectedAccounts')
+  })
+
   it('updateRepo persists fork sync mode across reloads', async () => {
     const store = await createStore()
     store.addRepo(makeRepo())

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { normalizeRepoSourceControlAiOverrides } from '../source-control-ai'
 import { normalizeRepoBadgeColor } from '../repo-badge-color'
 import { sanitizeRepoIcon } from '../repo-icon'
+import { normalizeRepoConnectedAccounts } from '../connected-accounts/connected-accounts-normalize'
 import { normalizeGhAccountBinding } from '../github/account-binding'
 import { normalizeJiraProjectReference } from '../jira/jira-project-reference'
 import {
@@ -70,6 +71,16 @@ export function createRepoUpdateSchema<T extends Readonly<Record<string, z.ZodTy
           // Why: malformed bindings must omit the key (IPC deletes); never clear via undefined.
           return normalizeGhAccountBinding(value) ?? undefined
         }),
+      connectedAccounts: z
+        .unknown()
+        .optional()
+        .transform((value) =>
+          value === undefined
+            ? undefined
+            : value === null
+              ? null
+              : (normalizeRepoConnectedAccounts(value) ?? null)
+        ),
       forkSyncMode: z.enum(['ask', 'safe-auto', 'off']).optional(),
       externalWorktreeVisibility: z.enum(['hide', 'show']).nullable().optional(),
       externalWorktreeVisibilityPromptDismissedAt: z.number().finite().optional(),

@@ -1,3 +1,4 @@
+import type { ConnectedAccountsGlobalSettings } from './connected-accounts/connected-accounts-types'
 import type { BrowserExtensionGlobalSettings } from './browser-extension-settings'
 import type { ClaudeAgentViewSettings } from './claude-agent-view'
 import type { BrowserLinkOpeningSettings } from './browser-link-opening-settings'
@@ -17,4 +18,5 @@ export type GlobalSettingsBase = ClaudeAgentViewSettings &
   ExternalConversationSettings &
   BrowserLinkOpeningSettings &
   OrchestrationHeartbeatSettings &
-  BrowserExtensionGlobalSettings
+  BrowserExtensionGlobalSettings &
+  ConnectedAccountsGlobalSettings

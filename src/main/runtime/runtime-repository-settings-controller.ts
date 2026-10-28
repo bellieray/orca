@@ -2,6 +2,7 @@ import { isFolderRepo } from '../../shared/repo-kind'
 import { commitProvenRepoKindChange } from '../folder-repo-git-conversion'
 import type { Repo } from '../../shared/repo-types'
 import type { RuntimeRepoSelector } from './runtime-repo-selector'
+import type { RepoConnectedAccounts } from '../../shared/connected-accounts/connected-accounts-types'
 import type { GhAccountBinding } from '../../shared/github/account-binding'
 import { invalidateAuthorizedRootsCache } from '../ipc/registered-worktree-roots-cache'
 import { prepareLocalWorktreeRootForRepo } from '../worktree-root-preparation'
@@ -55,6 +56,8 @@ type RepositoryUpdates = Partial<
   externalWorktreeDiscoverySuppressedAt?: Repo['externalWorktreeDiscoverySuppressedAt'] | null
   /** Only `null` clears; `omitUndefined` drops a stripped (undefined) field so it never unbinds. */
   ghAccount?: GhAccountBinding | null
+  /** Only `null` clears; `omitUndefined` drops a stripped (undefined) field so it never unbinds. */
+  connectedAccounts?: RepoConnectedAccounts | null
 }
 
 // Main computes each row's `visible` from these over cached raw Git scans, so re-list without rescanning.

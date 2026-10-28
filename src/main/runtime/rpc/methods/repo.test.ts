@@ -519,6 +519,37 @@ describe('repo RPC methods', () => {
     expect(updateRepo).toHaveBeenLastCalledWith('repo-1', { ghAccount: null })
   })
 
+  it('normalizes connectedAccounts updates and maps empty or null to the clear sentinel', async () => {
+    const updateRepo = vi.fn<OrcaRuntimeService['updateRepo']>().mockResolvedValue({
+      id: 'repo-1',
+      path: '/srv/repo',
+      displayName: 'repo',
+      badgeColor: '#000000',
+      addedAt: 0
+    })
+    const dispatcher = repoDispatcher({ getRuntimeId: () => 'test-runtime', updateRepo })
+
+    await dispatcher.dispatch(
+      makeRequest('repo.update', {
+        repo: 'repo-1',
+        updates: {
+          connectedAccounts: {
+            claudeAccountId: ' a ',
+            extraEnv: [{ key: 'GIT_DIR', value: 'x' }]
+          }
+        }
+      })
+    )
+    expect(updateRepo).toHaveBeenLastCalledWith('repo-1', {
+      connectedAccounts: { claudeAccountId: 'a' }
+    })
+
+    await dispatcher.dispatch(
+      makeRequest('repo.update', { repo: 'repo-1', updates: { connectedAccounts: {} } })
+    )
+    expect(updateRepo).toHaveBeenLastCalledWith('repo-1', { connectedAccounts: null })
+  })
+
   it('persists agent worktree visibility updates', async () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',

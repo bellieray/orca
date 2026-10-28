@@ -1,4 +1,5 @@
 import type { RepoIcon } from './repo-icon'
+import type { RepoConnectedAccounts } from './connected-accounts/connected-accounts-types'
 import type { GhAccountBinding } from './github/account-binding'
 import type { GitHubRepositoryIdentity } from './github/pull-request-types'
 import type { RepoHookSettings } from './orca-yaml-hook-types'
@@ -64,6 +65,8 @@ export type Repo = {
   defaultJiraProject?: JiraProjectReference | null
   /** Bind host/login only; resolve a short-lived gh token at spawn and inject into that child’s environment. */
   ghAccount?: GhAccountBinding
+  /** Which Claude/Firebase/AdMob/git-author account this project pins; ids and emails only, never tokens. */
+  connectedAccounts?: RepoConnectedAccounts
   /** Controls Orca's fork-default-branch sync offer for repos with upstream metadata. */
   forkSyncMode?: ForkSyncMode
   /** Canonical identity for the repo remote Orca should use for provider-level grouping. */

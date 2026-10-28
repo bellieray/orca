@@ -10,6 +10,8 @@ import { normalizeRepoBadgeColor } from '../../../shared/repo-badge-color'
 import { sanitizeRepoIcon } from '../../../shared/repo-icon'
 import { normalizeGhAccountBinding } from '../../../shared/github/account-binding'
 import type { GhAccountBinding } from '../../../shared/github/account-binding'
+import { normalizeRepoConnectedAccounts } from '../../../shared/connected-accounts/connected-accounts-normalize'
+import type { RepoConnectedAccounts } from '../../../shared/connected-accounts/connected-accounts-types'
 import { normalizeRepoSourceControlAiOverrides } from '../../../shared/source-control-ai'
 import {
   normalizeCustomWorktreeVisibilitySources,
@@ -62,6 +64,7 @@ export function registerRepoUpdateHandler(mainWindow: BrowserWindow, store: Stor
             | Repo['externalWorktreeDiscoverySuppressedAt']
             | null
           ghAccount?: GhAccountBinding | null
+          connectedAccounts?: RepoConnectedAccounts | null
         }
       }
     ): Promise<Repo | null> => {
@@ -98,6 +101,19 @@ export function registerRepoUpdateHandler(mainWindow: BrowserWindow, store: Stor
             delete updates.ghAccount
           } else {
             updates.ghAccount = normalized
+          }
+        }
+      }
+      // Null clears the binding; malformed or empty values are dropped, never stored.
+      if ('connectedAccounts' in updates) {
+        if (updates.connectedAccounts == null) {
+          updates.connectedAccounts = null
+        } else {
+          const normalized = normalizeRepoConnectedAccounts(updates.connectedAccounts)
+          if (!normalized) {
+            delete updates.connectedAccounts
+          } else {
+            updates.connectedAccounts = normalized
           }
         }
       }

@@ -1,6 +1,7 @@
 import type { WorkspaceSessionState } from '../../../shared/workspace-session-state-types'
 import type { ProjectHostSetup, ProjectHostSetupUpdateArgs } from '../../../shared/project-types'
 import type { Repo } from '../../../shared/repo-types'
+import type { RepoConnectedAccounts } from '../../../shared/connected-accounts/connected-accounts-types'
 import type { RepoHostTarget } from '../../../shared/repo-host-identity'
 import type { GhAccountBinding } from '../../../shared/github/account-binding'
 import {
@@ -182,6 +183,7 @@ export class RepoLifecycleOperations {
       sourceControlAi?: Repo['sourceControlAi'] | null
       externalWorktreeDiscoverySuppressedAt?: Repo['externalWorktreeDiscoverySuppressedAt'] | null
       ghAccount?: GhAccountBinding | null
+      connectedAccounts?: RepoConnectedAccounts | null
     }
   ): Repo | null {
     return getRepoUpdateOperations(this).updateRepo(target, updates)

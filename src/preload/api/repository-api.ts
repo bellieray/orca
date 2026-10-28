@@ -1,4 +1,5 @@
 import type { ExecutionHostId } from '../../shared/execution-host'
+import type { RepoConnectedAccounts } from '../../shared/connected-accounts/connected-accounts-types'
 import type { GhAccountBinding } from '../../shared/github/account-binding'
 import type {
   NestedRepoScanResult,
@@ -68,6 +69,7 @@ export type RepositoryApi = {
       sourceControlAi?: Repo['sourceControlAi'] | null
       externalWorktreeDiscoverySuppressedAt?: Repo['externalWorktreeDiscoverySuppressedAt'] | null
       ghAccount?: GhAccountBinding | null
+      connectedAccounts?: RepoConnectedAccounts | null
     }
   }) => Promise<Repo>
   pickFolder: () => Promise<string | null>
