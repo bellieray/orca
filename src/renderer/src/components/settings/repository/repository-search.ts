@@ -7,6 +7,7 @@ import {
 import type { SettingsSearchEntry } from '../settings-search'
 import { translate } from '@/i18n/i18n'
 import { translateSearchKeyword } from '../settings-search-keywords'
+import { connectedAccountsSearchEntry } from './connected-accounts/connected-accounts-search'
 import { getRepositoryGitAuthorSearchEntries } from './repository-git-author-search-entries'
 import { getRepositoryGitHooksSearchEntries } from './execution/repository-git-hooks-search-entries'
 import { getRepositoryGitWorktreeSearchEntries } from './execution/repository-git-worktree-search-entries'
@@ -100,6 +101,7 @@ export function getRepositoryPaneSearchEntries(
     },
     ...(!isFolder
       ? [
+          connectedAccountsSearchEntry(repo.displayName),
           {
             title: translate(
               'auto.components.settings.repository.search.githubAccount',

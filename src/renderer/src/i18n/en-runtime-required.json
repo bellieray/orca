@@ -955,6 +955,16 @@
       }
     }
   },
+  "connectedAccounts": {
+    "keywordAccount": "account",
+    "keywordAdmob": "admob",
+    "keywordClaude": "claude",
+    "keywordConnectedAccounts": "connected accounts",
+    "keywordEnv": "environment variables",
+    "keywordFirebase": "firebase",
+    "keywordGithub": "github",
+    "keywordRevenueCat": "revenuecat"
+  },
   "dashboard": {
     "sidebar": {
       "closeActivity": "Turn off activity view",

@@ -4,6 +4,7 @@ import type { Repo } from '../../../../shared/repo-types'
 import { sanitizeRepoIcon } from '../../../../shared/repo-icon'
 import { normalizeRepoBadgeColor } from '../../../../shared/repo-badge-color'
 import { normalizeGhAccountBinding } from '../../../../shared/github/account-binding'
+import { normalizeRepoConnectedAccounts } from '../../../../shared/connected-accounts/connected-accounts-normalize'
 import { normalizeJiraProjectReference } from '../../../../shared/jira/jira-project-reference'
 import {
   findRepoForHost,
@@ -66,6 +67,10 @@ export function sanitizeRepoUpdate(updates: RepoUpdate): RepoUpdate {
     } else {
       sanitized.ghAccount = normalized
     }
+  }
+  if ('connectedAccounts' in sanitized && sanitized.connectedAccounts != null) {
+    // Malformed or emptied bindings clear explicitly rather than sending partial data.
+    sanitized.connectedAccounts = normalizeRepoConnectedAccounts(sanitized.connectedAccounts)
   }
   if ('customWorktreeVisibilitySources' in sanitized) {
     const sources = normalizeCustomWorktreeVisibilitySources(
@@ -159,6 +164,7 @@ export function createRepoUpdateActions(
                 sourceControlAi,
                 externalWorktreeDiscoverySuppressedAt,
                 ghAccount,
+                connectedAccounts,
                 externalWorktreeVisibility,
                 agentWorktreeVisibility,
                 ...updatesWithoutClearSentinels
@@ -199,6 +205,13 @@ export function createRepoUpdateActions(
                 mergedRepo = repoWithoutGhAccount
               } else if (ghAccount !== undefined) {
                 mergedRepo = { ...mergedRepo, ghAccount }
+              }
+              if (connectedAccounts === null) {
+                const { connectedAccounts: _connectedAccounts, ...repoWithoutConnectedAccounts } =
+                  mergedRepo
+                mergedRepo = repoWithoutConnectedAccounts
+              } else if (connectedAccounts !== undefined) {
+                mergedRepo = { ...mergedRepo, connectedAccounts }
               }
               return mergedRepo
             })

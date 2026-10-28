@@ -195,6 +195,20 @@ describe('createIpcPtyTransport', () => {
     )
   })
 
+  it('surfaces a refused connected-accounts launch verbatim, not as a generic failure', async () => {
+    const { createIpcPtyTransport } = await import('./pty-transport')
+    const refusal =
+      'Claude account a@b.com is not available: not logged in. Fix: claude /login\nFirebase account c@d.com is not available: not logged in. Fix: npx -y firebase-tools@latest login:add'
+    vi.mocked(window.api.pty.spawn).mockRejectedValueOnce(
+      new Error(`Error invoking remote method 'pty:spawn': Error: ${refusal}`)
+    )
+    const onError = vi.fn()
+
+    await createIpcPtyTransport({}).connect({ url: '', callbacks: { onError } })
+
+    expect(onError).toHaveBeenCalledWith(refusal)
+  })
+
   it('threads provider command ownership through the spawn IPC', async () => {
     const { createIpcPtyTransport } = await import('./pty-transport')
     const transport = createIpcPtyTransport({

@@ -7,6 +7,7 @@ import {
   EyeOff,
   FolderInput,
   FolderTree,
+  KeyRound,
   Plus,
   // `Shapes` is lucide-react's own export name; exempted in config/oxlint-anti-slop.json.
   Shapes,
@@ -28,7 +29,10 @@ import {
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
-import { getRepositoryIconSectionId } from '@/components/settings/repository/repository-settings-targets'
+import {
+  getRepositoryConnectedAccountsSectionId,
+  getRepositoryIconSectionId
+} from '@/components/settings/repository/repository-settings-targets'
 import { WslMoveProjectMenuItem } from '@/components/wsl-move/WslMoveProjectMenuItem'
 import type { ProjectGroup } from '../../../../../../shared/project-group-types'
 import type { Repo } from '../../../../../../shared/repo-types'
@@ -137,6 +141,16 @@ export function RepoHeaderProjectActionsMenu({
           <SlidersHorizontal className="size-3.5" />
           {translate('auto.components.sidebar.WorktreeList.2cdffbc728', 'Project Settings')}
         </DropdownMenuItem>
+        {isGitRepoKind(repo) ? (
+          <DropdownMenuItem
+            onSelect={() =>
+              actions.onOpenRepoSettings(repo.id, getRepositoryConnectedAccountsSectionId(repo.id))
+            }
+          >
+            <KeyRound className="size-3.5" />
+            {translate('connectedAccounts.title', 'Connected Accounts')}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           onSelect={() => actions.onOpenRepoSettings(repo.id, getRepositoryIconSectionId(repo.id))}
         >

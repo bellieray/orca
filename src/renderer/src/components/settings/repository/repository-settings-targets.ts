@@ -18,3 +18,7 @@ export function getRepositorySourceControlAiActionRecipeSectionId(
 ): string {
   return `repo-${repoId}-source-control-ai-${actionId}`
 }
+
+export function getRepositoryConnectedAccountsSectionId(repoId: string): string {
+  return `repo-${repoId}-connected-accounts`
+}
