@@ -1,4 +1,8 @@
-/** Re-read account selection on every launch in Orca-routed panes with a real claude binary. Missing/empty pointer restores the user’s config; another pane override wins. Create account homes without a login silently and preserve Anthropic auth. Refuse nonabsolute pointers rather than run under the wrong account. */
+// Why a constant: tests and support grep for "Connected Accounts"; it is embedded in double quotes, so it must contain no !, `, $ or ".
+export const CLAUDE_SHELL_UNBOUND_MESSAGE =
+  "Orca: this project's Claude account is not available. Open Connected Accounts to fix it."
+
+/** Re-read account selection on every launch in Orca-routed panes with a real claude binary. Missing/empty pointer restores the user’s config; another pane override wins. Create account homes without a login silently and preserve Anthropic auth. Refuse nonabsolute pointers, and before any pane override the project sentinel, with one stderr line rather than run under the wrong account. */
 export function getPosixClaudeShellFunction(): string {
   return `__orca_claude_binary="$(unalias claude 2>/dev/null || :; command -v claude 2>/dev/null || :)"
 if [[ -n "\${ORCA_CLAUDE_PROFILE_POINTER:-}" && -n "\${__orca_claude_binary:-}" && -x "\${__orca_claude_binary}" ]]; then
@@ -7,6 +11,10 @@ if [[ -n "\${ORCA_CLAUDE_PROFILE_POINTER:-}" && -n "\${__orca_claude_binary:-}" 
     # Why: a WSL pane's pointer is relative to the guest home, which the host cannot know at spawn.
     case "$__orca_claude_pointer" in '~/'*) __orca_claude_pointer="\${HOME:-}/\${__orca_claude_pointer#??}" ;; esac
     __orca_claude_home="$(cat "$__orca_claude_pointer" 2>/dev/null || :)"
+    # Why before the pane-override check: a broken project binding must run no account at all.
+    if [ "$__orca_claude_pointer" = '!unbound' ] || [ "$__orca_claude_home" = '!unbound' ]; then
+      printf '%s\\n' "${CLAUDE_SHELL_UNBOUND_MESSAGE}" >&2; return 1
+    fi
     if [ -n "\${CLAUDE_CONFIG_DIR:-}" ] && [ "$CLAUDE_CONFIG_DIR" != "\${ORCA_CLAUDE_INJECTED_CONFIG_DIR:-}" ] &&
       { [ -z "\${ORCA_CLAUDE_USER_CONFIG_DIR:-}" ] || [ "\${CLAUDE_CONFIG_DIR%/}" != "\${ORCA_CLAUDE_USER_CONFIG_DIR%/}" ]; }; then
       command claude "$@"; return
@@ -18,7 +26,7 @@ if [[ -n "\${ORCA_CLAUDE_PROFILE_POINTER:-}" && -n "\${__orca_claude_binary:-}" 
     if [ -z "$__orca_claude_home" ]; then
       ( unset CLAUDE_CONFIG_DIR ORCA_CLAUDE_INJECTED_CONFIG_DIR; command claude "$@" ); return
     fi
-    case "$__orca_claude_home" in /*|[A-Za-z]:*) ;; *) return 1 ;; esac
+    case "$__orca_claude_home" in /*|[A-Za-z]:*) ;; *) printf '%s\\n' "${CLAUDE_SHELL_UNBOUND_MESSAGE}" >&2; return 1 ;; esac
     # Why -m 700: matches the folder Orca's setup creates; a credentials folder stays private.
     [ -d "$__orca_claude_home" ] || mkdir -p -m 700 -- "$__orca_claude_home" 2>/dev/null
     ( export CLAUDE_CONFIG_DIR="$__orca_claude_home" ORCA_CLAUDE_INJECTED_CONFIG_DIR="$__orca_claude_home"; command claude "$@" )
@@ -37,6 +45,10 @@ if test -n "$ORCA_CLAUDE_PROFILE_POINTER"; and test "$__orca_claude_type" = file
     # Why: a WSL pane's pointer is relative to the guest home, which the host cannot know at spawn.
     set -l pointer (string replace -r '^~/' "$HOME/" -- "$ORCA_CLAUDE_PROFILE_POINTER")
     set -l profile (cat "$pointer" 2>/dev/null)
+    if test "$ORCA_CLAUDE_PROFILE_POINTER" = '!unbound'; or test "$profile" = '!unbound'
+      echo "${CLAUDE_SHELL_UNBOUND_MESSAGE}" >&2
+      return 1
+    end
     set -l own (string trim -r -c / -- "$ORCA_CLAUDE_USER_CONFIG_DIR")
     set -l current (string trim -r -c / -- "$CLAUDE_CONFIG_DIR")
     if test -n "$CLAUDE_CONFIG_DIR"; and test "$CLAUDE_CONFIG_DIR" != "$ORCA_CLAUDE_INJECTED_CONFIG_DIR"; and begin; test -z "$own"; or test "$current" != "$own"; end
@@ -52,6 +64,7 @@ if test -n "$ORCA_CLAUDE_PROFILE_POINTER"; and test "$__orca_claude_type" = file
       return $status
     end
     if not string match -qr '^(/|[A-Za-z]:)' -- "$profile"
+      echo "${CLAUDE_SHELL_UNBOUND_MESSAGE}" >&2
       return 1
     end
     test -d "$profile"; or mkdir -p -m 700 -- "$profile" 2>/dev/null
@@ -75,6 +88,12 @@ function Global:claude {
         if ($env:ORCA_CLAUDE_PROFILE_POINTER -and (Test-Path -LiteralPath $env:ORCA_CLAUDE_PROFILE_POINTER -PathType Leaf)) {
             $orcaClaudeHome = [IO.File]::ReadAllText($env:ORCA_CLAUDE_PROFILE_POINTER).TrimEnd()
         }
+        # Why before the pane-override check: a broken project binding must run no account at all.
+        if ($env:ORCA_CLAUDE_PROFILE_POINTER -eq '!unbound' -or $orcaClaudeHome -eq '!unbound') {
+            [Console]::Error.WriteLine("${CLAUDE_SHELL_UNBOUND_MESSAGE}")
+            $global:LASTEXITCODE = 1
+            return
+        }
         # Why the separator swap: Windows names one folder with either separator.
         $own = ("$env:ORCA_CLAUDE_USER_CONFIG_DIR" -replace '/', '\\').TrimEnd('\\')
         if ($env:CLAUDE_CONFIG_DIR -and $env:CLAUDE_CONFIG_DIR -ne $env:ORCA_CLAUDE_INJECTED_CONFIG_DIR -and
@@ -85,6 +104,7 @@ function Global:claude {
             if ($env:CLAUDE_CONFIG_DIR -and $env:ORCA_CLAUDE_USER_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR = $env:ORCA_CLAUDE_USER_CONFIG_DIR }
             else { Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue }
         } elseif (-not [IO.Path]::IsPathRooted($orcaClaudeHome)) {
+            [Console]::Error.WriteLine("${CLAUDE_SHELL_UNBOUND_MESSAGE}")
             $global:LASTEXITCODE = 1
             return
         } else {

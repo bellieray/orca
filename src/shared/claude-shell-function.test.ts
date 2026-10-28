@@ -14,7 +14,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   getPosixClaudeShellFunction,
   getFishClaudeShellFunction,
-  getPowerShellClaudeShellFunction
+  getPowerShellClaudeShellFunction,
+  CLAUDE_SHELL_UNBOUND_MESSAGE
 } from './claude-shell-function'
 // Skip missing zsh/fish instead of failing with exit 127 on CI images.
 const POSIX_SHELLS = ['/bin/bash', '/bin/zsh'].filter((shell) => existsSync(shell))
@@ -40,7 +41,12 @@ function fixture() {
   )
   chmodSync(fake, 0o700)
   const pointer = join(root, 'selected')
-  const run = (shell: string, env: string[] = [], fakeKind: 'summary' | 'printenv' = 'summary') => {
+  const run = (
+    shell: string,
+    env: string[] = [],
+    fakeKind: 'summary' | 'printenv' = 'summary',
+    stderr = ''
+  ) => {
     if (fakeKind === 'printenv') {
       writeFileSync(fake, '#!/bin/sh\nenv\n')
     }
@@ -67,7 +73,7 @@ function fixture() {
       { encoding: 'utf8', cwd: root }
     )
     expect(result.status).not.toBe(97)
-    expect(result.stderr).toBe('')
+    expect(result.stderr).toBe(stderr)
     return result
   }
   return { a, b, pointer, run }
@@ -156,10 +162,26 @@ describe.each(SHELLS)('the claude function in %s', (shell) => {
   it('runs nothing for a pointer that names no absolute folder', () => {
     const f = fixture()
     writeFileSync(f.pointer, 'not-a-folder')
-    const result = f.run(shell)
+    const result = f.run(shell, [], 'summary', `${CLAUDE_SHELL_UNBOUND_MESSAGE}\n`)
     expect(result.status).toBe(1)
     expect(result.stdout).toBe('')
     expect(existsSync(join(f.a, '..', 'not-a-folder'))).toBe(false)
+  })
+
+  it('refuses an unbound project pointer, in the file or the env, over any pane value', () => {
+    const f = fixture()
+    expect(CLAUDE_SHELL_UNBOUND_MESSAGE).toContain('Connected Accounts')
+    writeFileSync(f.pointer, '!unbound')
+    const refusal = `${CLAUDE_SHELL_UNBOUND_MESSAGE}\n`
+    for (const env of [
+      [],
+      ['CLAUDE_CONFIG_DIR=/user/own'],
+      ['ORCA_CLAUDE_PROFILE_POINTER=!unbound']
+    ]) {
+      const result = f.run(shell, env, 'summary', refusal)
+      expect(result.status).toBe(1)
+      expect(result.stdout).toBe('')
+    }
   })
 
   it('follows the selection over the user’s own CLAUDE_CONFIG_DIR, inherited or exported by an rc', () => {
@@ -212,7 +234,13 @@ it('restores PowerShell process env without creating empty variables', () => {
 
 it('prints no Orca text from the PowerShell function and creates a missing account folder', () => {
   const script = getPowerShellClaudeShellFunction()
-  expect(script).not.toMatch(/Write-(Host|Output|Warning)|\bthrow\b|Orca:/)
+  expect(script).not.toMatch(/Write-(Host|Output|Warning)|\bthrow\b/)
+  // The only Orca text is the refusal of a missing project account.
+  expect(script.match(/Orca:/g)).toHaveLength(2)
+  expect(script.match(/\[Console\]::Error\.WriteLine\(/g)).toHaveLength(2)
+  expect(script).toContain(
+    "$env:ORCA_CLAUDE_PROFILE_POINTER -eq '!unbound' -or $orcaClaudeHome -eq '!unbound'"
+  )
   expect(script.match(/Write-Error/g)).toHaveLength(1)
   expect(script).toContain(
     '} catch { $global:LASTEXITCODE = 1; Write-Error $_ -ErrorAction Continue }'

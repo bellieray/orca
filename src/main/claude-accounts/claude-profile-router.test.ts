@@ -26,7 +26,10 @@ import {
   CLAUDE_PROFILE_MISSING_MESSAGE,
   CLAUDE_PROFILE_SETUP_FAILED_MESSAGE
 } from '../../shared/claude-profile-routing'
-import { getPosixClaudeShellFunction } from '../../shared/claude-shell-function'
+import {
+  CLAUDE_SHELL_UNBOUND_MESSAGE,
+  getPosixClaudeShellFunction
+} from '../../shared/claude-shell-function'
 import { ClaudeProfileRouter, type ClaudeProfileRouterSettings } from './claude-profile-router'
 import {
   claudeProfileHistoryDirs,
@@ -634,8 +637,33 @@ describe('ClaudeProfileRouter', () => {
         { env: { ...pane, PATH: `${join(f.root, 'bin')}:/usr/bin:/bin` }, encoding: 'utf8' }
       )
       expect(run.status).toBe(1)
+      expect(run.stderr).toBe(`${CLAUDE_SHELL_UNBOUND_MESSAGE}\n`)
+      expect(run.stderr).toContain('Connected Accounts')
     }
   )
+
+  it('blocks a bound WSL pane instead of handing it the global WSL pointer', () => {
+    const f = fixture()
+    mkdirSync(f.home('b'), { recursive: true })
+    const env = f.router.terminalEnv(
+      { runtime: 'wsl', wslDistro: 'Ubuntu' },
+      { repoId: 'r1', accountId: 'b' }
+    )
+    expect(env).toEqual({ ORCA_CLAUDE_PROFILE_POINTER: '!unbound' })
+  })
+
+  it('still opens a bound terminal, blocked, when its pointer cannot be written', () => {
+    const f = fixture()
+    mkdirSync(f.home('b'), { recursive: true })
+    // A file where the by-repo folder belongs makes every pointer write fail.
+    mkdirSync(join(f.dataRoot, 'claude-profiles'), { recursive: true })
+    writeFileSync(join(f.dataRoot, 'claude-profiles', 'by-repo'), '')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const env = f.router.terminalEnv(undefined, { repoId: 'r1', accountId: 'b' })
+    expect(env).toEqual({ ORCA_CLAUDE_PROFILE_POINTER: '!unbound' })
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
 
   it('lists history under the CLAUDE_CONFIG_DIR only the login shell exports', () => {
     const configDir = join(tmpdir(), `claude-router-own-${process.pid}`)

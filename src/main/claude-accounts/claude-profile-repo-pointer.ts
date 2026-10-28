@@ -32,3 +32,14 @@ export function writeClaudeRepoPointer(path: string, routedHome: () => string | 
   }
   writeClaudeProfilePointer(path, home)
 }
+
+/** The pointer path once written; the sentinel itself when the write fails, so the terminal opens but claude refuses. */
+export function publishClaudeRepoPointer(path: string, publish: () => void): string {
+  try {
+    publish()
+    return path
+  } catch (error) {
+    console.warn('[claude-profile] Could not write the project Claude account pointer:', error)
+    return CLAUDE_REPO_POINTER_UNBOUND
+  }
+}

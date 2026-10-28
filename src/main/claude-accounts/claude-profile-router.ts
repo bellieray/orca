@@ -10,6 +10,8 @@ import { claudeProfileMissing, claudeProfileSetupFailed } from './claude-profile
 import type { GlobalSettings } from '../../shared/global-settings-types'
 import {
   claudeRepoPointerPath,
+  CLAUDE_REPO_POINTER_UNBOUND,
+  publishClaudeRepoPointer,
   writeClaudeProfilePointer,
   writeClaudeRepoPointer,
   type ClaudeRepoAccountOverride
@@ -266,22 +268,23 @@ export class ClaudeProfileRouter {
   ): ClaudeEnvPatch {
     // Pass the pointer without waiting on the guest.
     if (target?.runtime === 'wsl') {
-      return { [CLAUDE_PROFILE_POINTER_ENV]: `~/${wslClaudeProfilePointer(this.args.dataRoot)}` }
+      // The guest cannot read the host repo pointer, so a bound pane carries the refusal itself.
+      const wslPointer = `~/${wslClaudeProfilePointer(this.args.dataRoot)}`
+      return { [CLAUDE_PROFILE_POINTER_ENV]: override ? CLAUDE_REPO_POINTER_UNBOUND : wslPointer }
     }
     // Save the user's value so the shell function can restore it on System default.
     const userConfigDir = readUserClaudeConfigDirAsSet(this.env)
     const base: ClaudeEnvPatch = {
+      // Written before returning, even pre-resolve: the shell reads a missing pointer as System default.
       [CLAUDE_PROFILE_POINTER_ENV]: override
-        ? this.repoPointerPath(override.repoId)
+        ? publishClaudeRepoPointer(this.repoPointerPath(override.repoId), () =>
+            this.writeRepoPointer(override)
+          )
         : this.pointerPath,
       ...(userConfigDir ? { [CLAUDE_USER_CONFIG_DIR_ENV]: userConfigDir } : {})
     }
-    if (override) {
-      // Written before returning, even pre-resolve: the shell reads a missing pointer as System default.
-      this.writeRepoPointer(override)
-    }
     // Defer routing until the shell env resolves; the shell function will read the updated pointer.
-    if (!this.envResolved) {
+    if (!this.envResolved || base[CLAUDE_PROFILE_POINTER_ENV] === CLAUDE_REPO_POINTER_UNBOUND) {
       return base
     }
     try {
