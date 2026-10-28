@@ -14,8 +14,11 @@ vi.mock('../git/runner', () => ({
   gitExecFileAsync: gitExecFileAsyncMock
 }))
 
-const { resolveConnectedAccountsFetchEnv, clearConnectedAccountsFetchWarningsForTests } =
-  await import('./connected-accounts-git-options')
+const {
+  resolveConnectedAccountsFetchEnv,
+  resolveConnectedAccountsGitOptions,
+  clearConnectedAccountsFetchWarningsForTests
+} = await import('./connected-accounts-git-options')
 const { clearGitConfigEnvSupportCacheForTests } = await import('./connected-accounts-git-env')
 const { RuntimeRemoteFetchController } = await import('../runtime/runtime-remote-fetch-controller')
 const { fetchPrHeadTrackingRef } = await import('../github/pr-head-tracking-ref')
@@ -24,7 +27,8 @@ const { fetchPrHeadTrackingRef } = await import('../github/pr-head-tracking-ref'
 const boundRepo = {
   id: 'bound',
   path: '/repos/bound',
-  ghAccount: { host: 'github.com', user: 'octo-personal' }
+  ghAccount: { host: 'github.com', user: 'octo-personal' },
+  connectedAccounts: { gitAuthor: { name: 'Octo', email: 'octo@example.com' } }
 } as Repo
 
 describe('best-effort fetch env for bound repos', () => {
@@ -51,12 +55,22 @@ describe('best-effort fetch env for bound repos', () => {
     expect(env?.GH_TOKEN).toBe('gho_bound_token')
   })
 
-  it('skips env and warns once (without the token) when unresolved', async () => {
+  it('blocks the fetch (not the machine account) and warns once without the token when unresolved', async () => {
     resolveGhAccountTokenMock.mockRejectedValue(new Error('no token'))
-    expect(await resolveConnectedAccountsFetchEnv(boundRepo, '/repos/bound')).toBeUndefined()
-    expect(await resolveConnectedAccountsFetchEnv(boundRepo, '/repos/bound')).toBeUndefined()
+    const env = await resolveConnectedAccountsFetchEnv(boundRepo, '/repos/bound')
+    expect(env?.GH_TOKEN).toBe('orca-connected-accounts-unresolved')
+    // Whole child env: git-spawn replaces process.env with it.
+    expect(env?.PATH).toBe(process.env.PATH)
+    await resolveConnectedAccountsFetchEnv(boundRepo, '/repos/bound')
     expect(warn).toHaveBeenCalledTimes(1)
     expect(String(warn.mock.calls[0]?.[0])).toContain('octo-personal@github.com')
+  })
+
+  it('push/commit on a WSL runtime refuses a bound account instead of using the guest default', async () => {
+    await expect(
+      resolveConnectedAccountsGitOptions(boundRepo, '/repos/bound', { wslDistro: 'Ubuntu' })
+    ).rejects.toThrow('not supported for WSL projects yet')
+    expect(resolveGhAccountTokenMock).not.toHaveBeenCalled()
   })
 
   it('returns undefined for unbound repos without resolving anything', async () => {
@@ -81,7 +95,7 @@ describe('best-effort fetch env for bound repos', () => {
     expect(fetchCall?.[1]).not.toHaveProperty('env')
   })
 
-  it('PR head fetch uses the bound env, and still fetches on an unresolved binding', async () => {
+  it('PR head fetch uses the bound env, and a blocked env on an unresolved binding', async () => {
     resolveGhAccountTokenMock.mockResolvedValueOnce('gho_bound_token')
     await fetchPrHeadTrackingRef(boundRepo, 'origin', 'feature')
     resolveGhAccountTokenMock.mockRejectedValueOnce(new Error('no token'))
@@ -89,6 +103,6 @@ describe('best-effort fetch env for bound repos', () => {
     const fetches = gitExecFileAsyncMock.mock.calls.filter(([args]) => args[0] === 'fetch')
     expect(fetches).toHaveLength(2)
     expect(fetches[0]?.[1].env?.GH_TOKEN).toBe('gho_bound_token')
-    expect(fetches[1]?.[1]).not.toHaveProperty('env')
+    expect(fetches[1]?.[1].env?.GH_TOKEN).toBe('orca-connected-accounts-unresolved')
   })
 })

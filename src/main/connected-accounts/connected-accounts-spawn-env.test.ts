@@ -80,17 +80,56 @@ describe('resolveConnectedAccountsSpawnEnv', () => {
     expect(await resolve({ ...bound, kind: 'folder' })).toEqual(empty)
     expect(await resolve({ ...bound, connectionId: 'ssh-1' })).toEqual(empty)
     expect(await resolve({ ...bound, executionHostId: 'ssh:box' })).toEqual(empty)
-    expect(
-      await resolveConnectedAccountsSpawnEnv({
-        repo: bound,
-        worktreePath: '/work/app',
-        settings,
-        baseEnv: {},
-        platform: 'linux',
-        runtime: 'wsl'
-      })
-    ).toEqual(empty)
     expect(resolveGhSpawnEnvMock).not.toHaveBeenCalled()
+  })
+
+  it('a bound project on a WSL runtime or WSL path is unresolved, never silently unbound', async () => {
+    const wslRuntime = await resolveConnectedAccountsSpawnEnv({
+      repo: bound,
+      worktreePath: '/work/app',
+      settings,
+      baseEnv: {},
+      platform: 'win32',
+      runtime: 'wsl'
+    })
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
+    let wslPath: Awaited<ReturnType<typeof resolve>>
+    try {
+      wslPath = await resolve({ ...bound, path: '//wsl.localhost/Ubuntu/home/me/app' })
+    } finally {
+      if (platform) {
+        Object.defineProperty(process, 'platform', platform)
+      }
+    }
+    for (const result of [wslRuntime, wslPath]) {
+      expect(result.unresolved.map((entry) => entry.tool)).toEqual(['github', 'firebase'])
+      expect(formatConnectedAccountsLaunchError(result.unresolved).message).toContain(
+        'not supported for WSL projects yet'
+      )
+    }
+    expect(resolveGhSpawnEnvMock).not.toHaveBeenCalled()
+    expect(ensureFirebaseMock).not.toHaveBeenCalled()
+  })
+
+  it('an unresolved Firebase binding blocks firebase-tools with a sentinel token', async () => {
+    ensureFirebaseMock.mockReturnValue({
+      ok: false,
+      unresolved: {
+        tool: 'firebase',
+        account: 'me@example.com',
+        reason: 'This worktree has no firebase.json at its root'
+      }
+    })
+    const result = await resolve(bound)
+    expect(result.env.FIREBASE_TOKEN).toBe('orca-connected-accounts-unresolved')
+    expect(result.unresolved).toEqual([expect.objectContaining({ tool: 'firebase' })])
+  })
+
+  it('a resolved Firebase binding clears an inherited FIREBASE_TOKEN', async () => {
+    const result = await resolve(bound)
+    expect(result.env.FIREBASE_TOKEN).toBe('')
+    expect(result.unresolved).toEqual([])
   })
 
   it('extra env is merged last and cannot override bound tool env', async () => {
@@ -109,14 +148,11 @@ describe('resolveConnectedAccountsSpawnEnv', () => {
   })
 
   it('fingerprint changes when a binding changes and never contains token material', async () => {
-    const first = connectedAccountsFingerprint(bound, settings)
-    const changed = connectedAccountsFingerprint(
-      {
-        ...bound,
-        connectedAccounts: { ...bound.connectedAccounts, firebaseEmail: 'b@example.com' }
-      },
-      settings
-    )
+    const first = connectedAccountsFingerprint(bound)
+    const changed = connectedAccountsFingerprint({
+      ...bound,
+      connectedAccounts: { ...bound.connectedAccounts, firebaseEmail: 'b@example.com' }
+    })
     expect(first).toMatch(/^[0-9a-f]{64}$/)
     expect(changed).not.toBe(first)
     const resolved = await resolve(bound)

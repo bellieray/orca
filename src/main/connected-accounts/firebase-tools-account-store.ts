@@ -97,11 +97,7 @@ export function ensureFirebaseActiveAccount(args: {
   const { configstorePath, worktreePath, email } = args
   const data = readConfigstore(configstorePath)
   if (!data || !collectAccountEmails(data).includes(email)) {
-    return unresolved(
-      email,
-      `Firebase account ${email} is not logged in to firebase-tools`,
-      FIREBASE_LOGIN_ADD_COMMAND
-    )
+    return unresolved(email, 'it is not logged in to firebase-tools', FIREBASE_LOGIN_ADD_COMMAND)
   }
 
   const projectRoot = findFirebaseProjectRoot(worktreePath)

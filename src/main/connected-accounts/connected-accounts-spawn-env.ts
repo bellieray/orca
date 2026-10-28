@@ -42,27 +42,80 @@ const TOOL_LABELS: Record<ConnectedAccountsUnresolved['tool'], string> = {
   admob: 'AdMob'
 }
 
+/** Only what binding resolution reads, so partial runtime-store settings can be passed. */
+export type ConnectedAccountsSettings = Partial<
+  Pick<GlobalSettings, 'claudeManagedAccounts' | 'connectedAccountsAdmobProfiles'>
+>
+
 const EMPTY: ConnectedAccountsSpawnEnv = { env: {}, unresolved: [], fingerprint: null }
 
-/** Local, git-backed repos only; WSL/SSH/runtime-host/folder repos stay on machine defaults in v1. */
+/** Local, git-backed repos only; SSH/runtime-host/folder repos stay on machine defaults in v1. */
 export type ConnectedAccountsRoutingRepo = Pick<
   Repo,
   'path' | 'kind' | 'connectionId' | 'executionHostId'
 >
 
+/** 'wsl' bindings cannot reach the guest in v1 (no WSLENV), so callers must refuse rather than ignore them. */
+export function connectedAccountsRepoScope(
+  repo: ConnectedAccountsRoutingRepo | undefined
+): 'local' | 'wsl' | null {
+  if (!repo || isFolderRepo(repo)) {
+    return null
+  }
+  if (getRepoRoutingConnectionId(repo)) {
+    return null
+  }
+  if (repo.executionHostId && repo.executionHostId !== 'local') {
+    return null
+  }
+  return parseWslPath(repo.path) === null ? 'local' : 'wsl'
+}
+
 export function connectedAccountsApplyToRepo<T extends ConnectedAccountsRoutingRepo>(
   repo: T | undefined
 ): repo is T {
-  if (!repo || isFolderRepo(repo)) {
-    return false
+  return connectedAccountsRepoScope(repo) === 'local'
+}
+
+export const CONNECTED_ACCOUNTS_WSL_FIX =
+  'Set this project to Default (machine) accounts in Connected Accounts'
+
+export function connectedAccountsWslUnresolved(
+  tool: ConnectedAccountsUnresolved['tool'],
+  account: string
+): ConnectedAccountsUnresolved {
+  return {
+    tool,
+    account,
+    reason: 'account bindings are not supported for WSL projects yet',
+    fixCommand: CONNECTED_ACCOUNTS_WSL_FIX
   }
-  if (getRepoRoutingConnectionId(repo)) {
-    return false
-  }
-  if (repo.executionHostId && repo.executionHostId !== 'local') {
-    return false
-  }
-  return parseWslPath(repo.path) === null
+}
+
+function wslUnresolvedForRepo(
+  repo: Repo,
+  settings: ConnectedAccountsSettings
+): ConnectedAccountsUnresolved[] {
+  const bound = repo.connectedAccounts
+  return [
+    ...(bound?.claudeAccountId
+      ? [
+          connectedAccountsWslUnresolved(
+            'claude',
+            claudeBoundAccountLabel(settings, bound.claudeAccountId)
+          )
+        ]
+      : []),
+    ...(repo.ghAccount
+      ? [connectedAccountsWslUnresolved('github', `${repo.ghAccount.user}@${repo.ghAccount.host}`)]
+      : []),
+    ...(bound?.firebaseEmail
+      ? [connectedAccountsWslUnresolved('firebase', bound.firebaseEmail)]
+      : []),
+    ...(bound?.admobProfileId
+      ? [connectedAccountsWslUnresolved('admob', bound.admobProfileId)]
+      : [])
+  ]
 }
 
 function hasBinding(repo: Repo): boolean {
@@ -89,7 +142,7 @@ export function connectedAccountsFingerprintInput(repo: Repo): string {
   ])
 }
 
-export function connectedAccountsFingerprint(repo: Repo, _settings: GlobalSettings): string | null {
+export function connectedAccountsFingerprint(repo: Repo): string | null {
   if (!connectedAccountsApplyToRepo(repo) || !hasBinding(repo)) {
     return null
   }
@@ -121,7 +174,10 @@ export function claudeAccountMissingUnresolved(
 }
 
 /** Email when the account is known, else its id, so the refusal always names the account. */
-export function claudeBoundAccountLabel(settings: GlobalSettings, accountId: string): string {
+export function claudeBoundAccountLabel(
+  settings: ConnectedAccountsSettings,
+  accountId: string
+): string {
   return (
     (settings.claudeManagedAccounts ?? []).find((account) => account.id === accountId)?.email ??
     accountId
@@ -134,24 +190,30 @@ const ADMOB_BLOCKED_ENV = {
   PUBLISHER_CODE: CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED
 }
 
+// firebase-tools (and its MCP) checks FIREBASE_TOKEN before the signed-in user, so a bogus one fails auth closed.
+const FIREBASE_BLOCKED_ENV = { FIREBASE_TOKEN: CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED }
+
 export async function resolveConnectedAccountsSpawnEnv(args: {
   repo: Repo | undefined
   worktreePath: string | undefined
-  settings: GlobalSettings
+  settings: ConnectedAccountsSettings
   baseEnv: Record<string, string>
   platform: NodeJS.Platform
-  /** WSL runtimes stay on machine defaults (the UI blocks binding them); no WSLENV forwarding in v1. */
+  /** A bound WSL runtime is unresolved: no WSLENV forwarding in v1, so the guest would use its default. */
   runtime?: 'host' | 'wsl'
   home?: string
 }): Promise<ConnectedAccountsSpawnEnv> {
   const { repo, worktreePath, settings, baseEnv, platform } = args
+  const scope = connectedAccountsRepoScope(repo)
+  if (!repo || scope === null || !hasBinding(repo)) {
+    return EMPTY
+  }
   if (
-    !connectedAccountsApplyToRepo(repo) ||
-    !hasBinding(repo) ||
+    scope === 'wsl' ||
     args.runtime === 'wsl' ||
     (worktreePath !== undefined && parseWslPath(worktreePath) !== null)
   ) {
-    return EMPTY
+    return { env: {}, unresolved: wslUnresolvedForRepo(repo, settings), fingerprint: null }
   }
   const bound = repo.connectedAccounts ?? {}
   const unresolved: ConnectedAccountsUnresolved[] = []
@@ -201,7 +263,7 @@ export async function resolveConnectedAccountsSpawnEnv(args: {
   }
 
   if (bound.firebaseEmail) {
-    // firebase-tools keys its account per project root in the configstore, so there is no env to set.
+    // The account is keyed per project root in the configstore; FIREBASE_TOKEN beats it, so clear inherited ones.
     const firebase = worktreePath
       ? ensureFirebaseActiveAccount({
           configstorePath: firebaseToolsConfigstorePath(baseEnv, args.home ?? homedir()),
@@ -209,22 +271,25 @@ export async function resolveConnectedAccountsSpawnEnv(args: {
           email: bound.firebaseEmail
         })
       : null
-    if (!firebase) {
-      unresolved.push({
-        tool: 'firebase',
-        account: bound.firebaseEmail,
-        reason: 'This terminal is not inside a worktree'
-      })
-    } else if (!firebase.ok) {
-      unresolved.push(firebase.unresolved)
+    if (firebase?.ok) {
+      toolEnv = { ...toolEnv, FIREBASE_TOKEN: '' }
+    } else {
+      toolEnv = { ...toolEnv, ...FIREBASE_BLOCKED_ENV }
+      unresolved.push(
+        firebase?.unresolved ?? {
+          tool: 'firebase',
+          account: bound.firebaseEmail,
+          reason: 'This terminal is not inside a worktree'
+        }
+      )
     }
   }
 
   return {
-    // Extra env last; reserved keys (GH_*, GIT_*, CLAUDE_*, CREDENTIALS_DIR...) never reach it.
+    // Extra env last; reserved keys (GH_*, GIT_*, CLAUDE_*, FIREBASE_TOKEN...) never reach it.
     env: { ...toolEnv, ...resolveExtraEnv(bound.extraEnv, platform) },
     ...(claudeOverride ? { claudeOverride } : {}),
     unresolved,
-    fingerprint: connectedAccountsFingerprint(repo, settings)
+    fingerprint: connectedAccountsFingerprint(repo)
   }
 }

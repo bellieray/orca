@@ -93,7 +93,7 @@ describe('connected accounts IPC', () => {
   it('staleSessionCount counts panes recorded with an older fingerprint', async () => {
     const invoke = setup([gitRepo])
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: empty settings fixture; the fingerprint code under test reads no settings field here.
-    const current = connectedAccountsFingerprint(gitRepo, {} as GlobalSettings)
+    const current = connectedAccountsFingerprint(gitRepo)
     expect(current).not.toBeNull()
     recordConnectedAccountsPane('pty-1', 'repo-1', 'a')
     recordConnectedAccountsPane('pty-2', 'repo-1', 'a')
@@ -111,7 +111,7 @@ describe('connected accounts IPC', () => {
       'pty-1',
       'repo-1',
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: empty settings fixture; the fingerprint code under test reads no settings field here.
-      connectedAccountsFingerprint(gitRepo, {} as GlobalSettings)
+      connectedAccountsFingerprint(gitRepo)
     )
 
     await expect(invoke('connectedAccounts:staleSessionCount', { repoId: 'repo-1' })).resolves.toBe(

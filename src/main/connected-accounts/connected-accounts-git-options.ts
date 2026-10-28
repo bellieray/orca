@@ -1,9 +1,10 @@
 // Applies a project's bound GitHub account to Orca's own git children (push/pull/fetch/commit).
 // Tokens only ever live in the returned env: never log or persist it.
 import type { Repo } from '../../shared/repo-types'
-import { resolveGhSpawnEnv } from './connected-accounts-git-env'
+import { buildBlockedGhEnvPatch, resolveGhSpawnEnv } from './connected-accounts-git-env'
 import {
-  connectedAccountsApplyToRepo,
+  connectedAccountsRepoScope,
+  connectedAccountsWslUnresolved,
   formatConnectedAccountsLaunchError,
   formatConnectedAccountsUnresolved,
   type ConnectedAccountsRoutingRepo
@@ -16,7 +17,11 @@ export type ConnectedAccountsGitRepo = ConnectedAccountsRoutingRepo &
 type GitEnvResolution =
   | { kind: 'none' }
   | { kind: 'bound'; env: NodeJS.ProcessEnv }
-  | { kind: 'unresolved'; unresolved: ConnectedAccountsUnresolved }
+  | { kind: 'unresolved'; unresolved: ConnectedAccountsUnresolved; env?: NodeJS.ProcessEnv }
+
+function ghAccountLabel(binding: NonNullable<Repo['ghAccount']>): string {
+  return `${binding.user}@${binding.host}`
+}
 
 function processEnvStrings(): Record<string, string> {
   const env: Record<string, string> = {}
@@ -33,9 +38,16 @@ async function resolveConnectedAccountsGitEnv(
   cwd: string,
   wslDistro: string | undefined
 ): Promise<GitEnvResolution> {
-  // WSL runtimes stay on machine defaults in v1, matching agent/terminal spawn.
-  if (!connectedAccountsApplyToRepo(repo) || !repo.ghAccount || wslDistro) {
+  const scope = connectedAccountsRepoScope(repo)
+  if (!repo?.ghAccount || scope === null) {
     return { kind: 'none' }
+  }
+  if (scope === 'wsl' || wslDistro) {
+    // No env reaches git inside WSL in v1, so a bound WSL project fails loud instead of using the guest default.
+    return {
+      kind: 'unresolved',
+      unresolved: connectedAccountsWslUnresolved('github', ghAccountLabel(repo.ghAccount))
+    }
   }
   const baseEnv = processEnvStrings()
   const gh = await resolveGhSpawnEnv({
@@ -45,7 +57,7 @@ async function resolveConnectedAccountsGitEnv(
     baseEnv
   })
   if ('unresolved' in gh) {
-    return { kind: 'unresolved', unresolved: gh.unresolved }
+    return { kind: 'unresolved', unresolved: gh.unresolved, env: { ...baseEnv, ...gh.env } }
   }
   // git-spawn uses options.env as the whole child env, and the GIT_CONFIG_* indices were built on this base.
   return { kind: 'bound', env: { ...baseEnv, ...gh.env } }
@@ -70,8 +82,8 @@ export async function resolveConnectedAccountsGitOptions<T extends { wslDistro?:
 const warnedUnresolvedFetches = new Set<string>()
 
 /**
- * For background/best-effort read fetches: the bound env when it resolves, otherwise undefined
- * (machine default) with one warning per repo+account so a broken binding does not spam logs.
+ * For background/best-effort read fetches: the bound env when it resolves, otherwise an env that
+ * fails gh/git auth closed (polling tolerates the git_error), never the machine default account.
  */
 export async function resolveConnectedAccountsFetchEnv(
   repo: ConnectedAccountsGitRepo | undefined,
@@ -82,7 +94,19 @@ export async function resolveConnectedAccountsFetchEnv(
   try {
     resolved = await resolveConnectedAccountsGitEnv(repo, cwd, wslDistro)
   } catch {
-    return undefined
+    if (connectedAccountsRepoScope(repo) !== 'local' || !repo?.ghAccount) {
+      return undefined
+    }
+    const baseEnv = processEnvStrings()
+    resolved = {
+      kind: 'unresolved',
+      unresolved: {
+        tool: 'github',
+        account: ghAccountLabel(repo.ghAccount),
+        reason: 'the account could not be resolved'
+      },
+      env: { ...baseEnv, ...buildBlockedGhEnvPatch(repo.ghAccount, baseEnv) }
+    }
   }
   if (resolved.kind === 'bound') {
     return resolved.env
@@ -92,9 +116,11 @@ export async function resolveConnectedAccountsFetchEnv(
     if (!warnedUnresolvedFetches.has(key)) {
       warnedUnresolvedFetches.add(key)
       console.warn(
-        `[connected-accounts] background fetch uses the machine default account: ${formatConnectedAccountsUnresolved(resolved.unresolved)}`
+        `[connected-accounts] background fetch is blocked for the bound account: ${formatConnectedAccountsUnresolved(resolved.unresolved)}`
       )
     }
+    // WSL has no env to block with (undefined); push/commit refuse there instead.
+    return resolved.env
   }
   return undefined
 }

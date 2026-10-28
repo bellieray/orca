@@ -48,7 +48,7 @@ async function bindFirebaseProject(
 
 function staleSessionCount(store: ConnectedAccountsStore, args: { repoId: string }): number {
   const repo = store.getRepo(args.repoId)
-  const fingerprint = repo ? connectedAccountsFingerprint(repo, store.getSettings()) : null
+  const fingerprint = repo ? connectedAccountsFingerprint(repo) : null
   return countStaleConnectedAccountsPanes(args.repoId, fingerprint)
 }
 
