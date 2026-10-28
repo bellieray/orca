@@ -16,6 +16,7 @@ import {
   resolveGhAccountToken
 } from '../github/gh-account-token'
 import { gitExecFileAsync } from '../git/runner'
+import { createGhMultiAccountUnsupportedError } from '../github/gh-capability-state'
 import {
   CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED,
   buildBlockedGhEnvPatch,
@@ -174,6 +175,18 @@ describe('resolveGhSpawnEnv', () => {
     expect(result.env.GH_TOKEN).toBe(CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED)
     expect(Object.values(result.env)).not.toContain(HELPER)
     expect(configPairs(result.env)).toEqual([['credential.https://github.com.helper', '']])
+  })
+
+  it('old gh asks for an upgrade instead of a login', async () => {
+    stubGitVersion('git version 2.45.0\n')
+    vi.mocked(resolveGhAccountToken).mockRejectedValue(createGhMultiAccountUnsupportedError())
+    const result = await resolveGhSpawnEnv({ binding, cwd: '/repo', baseEnv: {} })
+    if (!('unresolved' in result)) {
+      throw new Error('expected unresolved')
+    }
+    expect(result.unresolved.fixCommand).toBeUndefined()
+    expect(result.unresolved.reason).toContain('2.40+')
+    expect(result.env.GH_TOKEN).toBe(CONNECTED_ACCOUNTS_GH_TOKEN_BLOCKED)
   })
 
   it('old git reports the binding unresolvable', async () => {

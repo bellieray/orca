@@ -168,8 +168,20 @@ export async function resolveGhSpawnEnv(args: {
   let token: string
   try {
     token = await resolveGhAccountToken(binding, { cwd })
-  } catch {
+  } catch (error) {
     // Fixed text only: gh stderr may echo auth material.
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'gh_multi_account_unsupported'
+    ) {
+      return blocked({
+        tool: 'github',
+        account,
+        reason: 'GitHub CLI 2.40+ is required to pin a GitHub account per project'
+      })
+    }
     return blocked({
       tool: 'github',
       account,
