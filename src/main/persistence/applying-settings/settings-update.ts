@@ -23,6 +23,7 @@ import { normalizeUiLanguage } from '../../../shared/ui-language'
 import { normalizeWorktreeVisibilityDefaults } from '../../../shared/external-worktree-visibility'
 import { normalizePRBotAuthorOverrides } from '../../../shared/pr-bot-author-overrides'
 import { normalizeMachineName } from '../../../shared/machine-name'
+import { sanitizeConnectedAccountsSettingsUpdates } from '../../../shared/connected-accounts/connected-accounts-normalize'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import {
   addMobilePairingCustomAddress,
@@ -203,6 +204,7 @@ export function updateSettings(
   if ('machineName' in updates) {
     sanitizedUpdates.machineName = normalizeMachineName(updates.machineName)
   }
+  Object.assign(sanitizedUpdates, sanitizeConnectedAccountsSettingsUpdates(updates))
   if ('mobilePairingCustomAddress' in updates) {
     sanitizedUpdates.mobilePairingCustomAddress = normalizeMobilePairingCustomAddress(
       updates.mobilePairingCustomAddress

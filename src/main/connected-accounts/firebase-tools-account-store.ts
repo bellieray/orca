@@ -138,13 +138,16 @@ export function ensureFirebaseActiveAccount(args: {
   return { ok: true, projectRoot }
 }
 
-export async function writeConnectedAccountsFirebaseJson(worktreePath: string): Promise<void> {
+/** Returns true when it created firebase.json, false when one already existed. */
+export async function writeConnectedAccountsFirebaseJson(worktreePath: string): Promise<boolean> {
   try {
     // 'wx' makes the "only if absent" check atomic.
     await writeFile(join(worktreePath, 'firebase.json'), '{}\n', { flag: 'wx' })
+    return true
   } catch (error) {
-    if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
-      throw error
+    if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+      return false
     }
+    throw error
   }
 }

@@ -122,3 +122,31 @@ describe('updateSettings terminalMinimumContrastRatio', () => {
     )
   })
 })
+
+describe('updateSettings connectedAccountsAdmobProfiles', () => {
+  it('drops malformed and duplicate profiles and trims the rest', () => {
+    const operations = settingsOperations({ connectedAccountsAdmobProfiles: [] })
+
+    const stored = updateSettings(operations, {
+      connectedAccountsAdmobProfiles: [
+        { id: ' a ', name: ' Work ', credentialsDir: ' /creds/a ', publisherCode: ' pub-1 ' },
+        { id: 'a', name: 'Dup', credentialsDir: '/creds/b', publisherCode: 'pub-2' },
+        { id: 'b', name: '', credentialsDir: '/creds/c', publisherCode: 'pub-3' }
+      ]
+    }).connectedAccountsAdmobProfiles
+
+    expect(stored).toEqual([
+      { id: 'a', name: 'Work', credentialsDir: '/creds/a', publisherCode: 'pub-1' }
+    ])
+  })
+
+  it('stores a non-array write as an empty list', () => {
+    const operations = settingsOperations({ connectedAccountsAdmobProfiles: [] })
+
+    expect(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a hand-built client can send any JSON; the boundary must coerce it.
+      updateSettings(operations, { connectedAccountsAdmobProfiles: 'x' as unknown as [] })
+        .connectedAccountsAdmobProfiles
+    ).toEqual([])
+  })
+})

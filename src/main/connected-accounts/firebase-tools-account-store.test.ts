@@ -182,10 +182,10 @@ describe('firebase-tools account store', () => {
   })
 
   it('bind button writes firebase.json once', async () => {
-    await writeConnectedAccountsFirebaseJson(worktree)
+    expect(await writeConnectedAccountsFirebaseJson(worktree)).toBe(true)
     expect(readFileSync(join(worktree, 'firebase.json'), 'utf-8')).toBe('{}\n')
     writeFileSync(join(worktree, 'firebase.json'), '{"hosting":{}}')
-    await writeConnectedAccountsFirebaseJson(worktree)
+    expect(await writeConnectedAccountsFirebaseJson(worktree)).toBe(false)
     expect(readFileSync(join(worktree, 'firebase.json'), 'utf-8')).toBe('{"hosting":{}}')
   })
 })

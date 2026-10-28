@@ -2,6 +2,7 @@ import type {
   ConnectedAccountsAdmobProfile,
   ConnectedAccountsExtraEnvEntry,
   ConnectedAccountsGitAuthor,
+  ConnectedAccountsGlobalSettings,
   RepoConnectedAccounts
 } from './connected-accounts-types'
 
@@ -133,4 +134,17 @@ export function normalizeConnectedAccountsAdmobProfiles(
     profiles.push({ id, name, credentialsDir, publisherCode })
   }
   return profiles
+}
+
+/** Settings-write boundary: returns only the connected-accounts keys present in `updates`, normalized. */
+export function sanitizeConnectedAccountsSettingsUpdates(
+  updates: Partial<ConnectedAccountsGlobalSettings>
+): Partial<ConnectedAccountsGlobalSettings> {
+  return 'connectedAccountsAdmobProfiles' in updates
+    ? {
+        connectedAccountsAdmobProfiles: normalizeConnectedAccountsAdmobProfiles(
+          updates.connectedAccountsAdmobProfiles
+        )
+      }
+    : {}
 }

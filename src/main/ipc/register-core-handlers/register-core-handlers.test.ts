@@ -35,6 +35,7 @@ const {
   registerCodexAccountHandlersMock,
   registerAgentHookHandlersMock,
   registerClaudeAccountHandlersMock,
+  registerConnectedAccountsHandlersMock,
   registerOpenCodeGoCredentialsHandlersMock,
   registerMiniMaxCredentialsHandlersMock,
   registerZcodePlanCredentialsHandlersMock,
@@ -106,6 +107,7 @@ const {
   registerCodexAccountHandlersMock: vi.fn(),
   registerAgentHookHandlersMock: vi.fn(),
   registerClaudeAccountHandlersMock: vi.fn(),
+  registerConnectedAccountsHandlersMock: vi.fn(),
   registerOpenCodeGoCredentialsHandlersMock: vi.fn(),
   registerMiniMaxCredentialsHandlersMock: vi.fn(),
   registerZcodePlanCredentialsHandlersMock: vi.fn(),
@@ -358,6 +360,10 @@ vi.mock('../claude-accounts', () => ({
   registerClaudeAccountHandlers: registerClaudeAccountHandlersMock
 }))
 
+vi.mock('../connected-accounts', () => ({
+  registerConnectedAccountsHandlers: registerConnectedAccountsHandlersMock
+}))
+
 vi.mock('../opencode-go-credentials', () => ({
   registerOpenCodeGoCredentialsHandlers: registerOpenCodeGoCredentialsHandlersMock
 }))
@@ -484,6 +490,7 @@ describe('registerCoreHandlers', () => {
     registerCodexAccountHandlersMock.mockReset()
     registerAgentHookHandlersMock.mockReset()
     registerClaudeAccountHandlersMock.mockReset()
+    registerConnectedAccountsHandlersMock.mockReset()
     registerOpenCodeGoCredentialsHandlersMock.mockReset()
     registerMiniMaxCredentialsHandlersMock.mockReset()
     registerZcodePlanCredentialsHandlersMock.mockReset()
@@ -595,6 +602,7 @@ describe('registerCoreHandlers', () => {
     )
     expect(registerPetHandlersMock).toHaveBeenCalled()
     expect(registerClaudeAccountHandlersMock).toHaveBeenCalledWith(claudeAccounts)
+    expect(registerConnectedAccountsHandlersMock).toHaveBeenCalledWith(store)
     expect(registerOpenCodeGoCredentialsHandlersMock).toHaveBeenCalledWith(rateLimits)
     expect(registerMiniMaxCredentialsHandlersMock).toHaveBeenCalledWith(rateLimits)
     expect(registerZcodePlanCredentialsHandlersMock).toHaveBeenCalledWith(rateLimits)

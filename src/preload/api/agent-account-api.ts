@@ -6,6 +6,7 @@ import type { CodexConfigSyncStatus } from '../../shared/codex-config-sync-types
 import type { CursorAccountStatus, GrokAccountStatus } from '../../shared/rate-limit-types'
 import type { ZcodePlanCredentialsStatus } from '../../shared/zcode-plan-sites'
 import type { MiniMaxCredentialsStatus } from '../../shared/minimax-credentials-status'
+import type { ConnectedAccountsGitAuthor } from '../../shared/connected-accounts/connected-accounts-types'
 
 export type CodexAccountsApi = {
   list: () => Promise<CodexRateLimitAccountsState>
@@ -90,4 +91,15 @@ export type ZcodePlanCredentialsApi = {
 
 export type CodexConfigSyncApi = {
   status: () => Promise<CodexConfigSyncStatus>
+}
+
+export type ConnectedAccountsApi = {
+  /** Emails logged in to firebase-tools on this machine. */
+  listFirebaseAccounts: () => Promise<string[]>
+  /** Writes `{}` firebase.json at the project root when absent; rejects folder and non-local projects. */
+  bindFirebaseProject: (args: { repoId: string }) => Promise<{ wrote: boolean }>
+  /** One `gh api user` call as the given account; call it on bind, never at spawn. */
+  suggestGitAuthor: (args: { host: string; user: string }) => Promise<ConnectedAccountsGitAuthor>
+  /** Live panes of the project that started with an older account binding. */
+  staleSessionCount: (args: { repoId: string }) => Promise<number>
 }

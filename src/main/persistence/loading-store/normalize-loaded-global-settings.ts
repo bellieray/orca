@@ -16,6 +16,7 @@ import {
 } from '../applying-settings/terminal-settings-migrations'
 import { readLegacySidekickFlag } from '../applying-settings/onboarding-normalization'
 import { normalizeMachineName } from '../../../shared/machine-name'
+import { normalizeConnectedAccountsAdmobProfiles } from '../../../shared/connected-accounts/connected-accounts-normalize'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { PreparedLoadedTerminalSettings } from './prepare-loaded-terminal-settings'
 import type { PreparedLoadedProfileSettings } from './prepare-loaded-profile-settings'
@@ -123,6 +124,9 @@ export function normalizeLoadedGlobalSettings(
     mobilePairingCustomAddress,
     mobilePairingCustomAddresses,
     machineName: normalizeMachineName(parsed.settings?.machineName),
+    connectedAccountsAdmobProfiles: normalizeConnectedAccountsAdmobProfiles(
+      parsed.settings?.connectedAccountsAdmobProfiles
+    ),
     minimizeToTrayOnClose: parsed.settings?.minimizeToTrayOnClose === true,
     // Default-on values round-trip off-platform; macOS consumers gate the actual effect.
     showMenuBarIcon: parsed.settings?.showMenuBarIcon !== false,
