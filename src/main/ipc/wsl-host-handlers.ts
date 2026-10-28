@@ -258,7 +258,8 @@ export function registerWslHostHandlers(args: WslHostHandlerArgs): void {
       })
   )
   ipcMain.handle('wslHosts:getCapability', (): WslHostCapability => ({
-    serverFiles: wsl.hasServerFiles()
+    serverFiles: wsl.hasServerFiles(),
+    acceptsNewWork: wslHostsGateOpen()
   }))
   ipcMain.handle('wslHosts:getStatuses', () => wsl.getStatuses())
   const visibleWork = new WslHostVisibleWorkByWindow()
