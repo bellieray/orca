@@ -153,6 +153,10 @@ if [[ -n "${ORCA_CLAUDE_PROFILE_POINTER:-}" && -n "${__orca_claude_binary:-}" &&
     # Why: a WSL pane's pointer is relative to the guest home, which the host cannot know at spawn.
     case "$__orca_claude_pointer" in '~/'*) __orca_claude_pointer="${HOME:-}/${__orca_claude_pointer#??}" ;; esac
     __orca_claude_home="$(cat "$__orca_claude_pointer" 2>/dev/null || :)"
+    # Why before the pane-override check: a broken project binding must run no account at all.
+    if [ "$__orca_claude_pointer" = '!unbound' ] || [ "$__orca_claude_home" = '!unbound' ]; then
+      printf '%s\n' "Orca: this project's Claude account is not available. Open Connected Accounts to fix it." >&2; return 1
+    fi
     if [ -n "${CLAUDE_CONFIG_DIR:-}" ] && [ "$CLAUDE_CONFIG_DIR" != "${ORCA_CLAUDE_INJECTED_CONFIG_DIR:-}" ] &&
       { [ -z "${ORCA_CLAUDE_USER_CONFIG_DIR:-}" ] || [ "${CLAUDE_CONFIG_DIR%/}" != "${ORCA_CLAUDE_USER_CONFIG_DIR%/}" ]; }; then
       command claude "$@"; return
@@ -164,7 +168,7 @@ if [[ -n "${ORCA_CLAUDE_PROFILE_POINTER:-}" && -n "${__orca_claude_binary:-}" &&
     if [ -z "$__orca_claude_home" ]; then
       ( unset CLAUDE_CONFIG_DIR ORCA_CLAUDE_INJECTED_CONFIG_DIR; command claude "$@" ); return
     fi
-    case "$__orca_claude_home" in /*|[A-Za-z]:*) ;; *) return 1 ;; esac
+    case "$__orca_claude_home" in /*|[A-Za-z]:*) ;; *) printf '%s\n' "Orca: this project's Claude account is not available. Open Connected Accounts to fix it." >&2; return 1 ;; esac
     # Why -m 700: matches the folder Orca's setup creates; a credentials folder stays private.
     [ -d "$__orca_claude_home" ] || mkdir -p -m 700 -- "$__orca_claude_home" 2>/dev/null
     ( export CLAUDE_CONFIG_DIR="$__orca_claude_home" ORCA_CLAUDE_INJECTED_CONFIG_DIR="$__orca_claude_home"; command claude "$@" )
