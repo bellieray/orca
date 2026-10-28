@@ -3,6 +3,18 @@ import { WORKTREE_ID_SEPARATOR, type ParsedWorktreeId } from '../../shared/workt
 import type * as WorktreeIdModule from '../../shared/worktree/id'
 
 const counter = vi.hoisted(() => ({ splitCalls: 0 }))
+const { resolveGhAccountTokenMock, gitExecFileAsyncMock } = vi.hoisted(() => ({
+  resolveGhAccountTokenMock: vi.fn(),
+  gitExecFileAsyncMock: vi.fn()
+}))
+
+vi.mock('../github/gh-account-token', () => ({
+  resolveGhAccountToken: resolveGhAccountTokenMock
+}))
+
+vi.mock('../git/runner', () => ({
+  gitExecFileAsync: gitExecFileAsyncMock
+}))
 
 // Count per-row parsing to expose O(repos × rows) rescans.
 vi.mock('../../shared/worktree/id', async (importOriginal) => {
@@ -16,7 +28,12 @@ vi.mock('../../shared/worktree/id', async (importOriginal) => {
   }
 })
 
-const { getLocalRepoForRegisteredWorktree } = await import('./local-worktree-runtime-options')
+const {
+  getLocalRepoForRegisteredWorktree,
+  getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts
+} = await import('./local-worktree-runtime-options')
+const { clearGitConfigEnvSupportCacheForTests } =
+  await import('../connected-accounts/connected-accounts-git-env')
 
 type TestRepo = { id: string; path: string; connectionId?: string }
 
@@ -137,5 +154,88 @@ describe('getLocalRepoForRegisteredWorktree', () => {
         getLocalRepoForRegisteredWorktree({ getRepos: () => repos } as never, '/wt/one', '/wt/one')
       ).toBeUndefined()
     })
+  })
+})
+
+describe('getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts', () => {
+  const WT = '/repos/bound/wt-feature'
+  const boundRepo = {
+    id: 'bound',
+    path: '/repos/bound',
+    ghAccount: { host: 'github.com', user: 'octo-personal' },
+    connectedAccounts: {
+      gitAuthor: { name: 'Octo Personal', email: 'octo@example.com' }
+    }
+  }
+  const makeBindingStore = (repos: readonly object[]): never =>
+    ({
+      getRepos: () => repos,
+      getAllWorktreeMeta: () => ({ [worktreeId('bound', WT)]: {} }),
+      getProjects: () => [],
+      getSettings: () => ({})
+    }) as never
+
+  const networkGitCalls = (): unknown[][] =>
+    gitExecFileAsyncMock.mock.calls.filter(([args]) => !(args as string[]).includes('--version'))
+
+  beforeEach(() => {
+    clearGitConfigEnvSupportCacheForTests()
+    resolveGhAccountTokenMock.mockReset()
+    gitExecFileAsyncMock.mockReset()
+    gitExecFileAsyncMock.mockResolvedValue({
+      stdout: 'git version 2.45.0\n',
+      stderr: ''
+    })
+  })
+
+  it('push options for a bound repo carry the pinned credential helper and token', async () => {
+    resolveGhAccountTokenMock.mockResolvedValue('gho_bound_token')
+    const options = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
+      makeBindingStore([boundRepo]),
+      WT,
+      WT
+    )
+    const env = options.env ?? {}
+    expect(env.GH_TOKEN).toBe('gho_bound_token')
+    expect(env.GH_HOST).toBe('github.com')
+    const count = Number(env.GIT_CONFIG_COUNT)
+    const helperValues: string[] = []
+    for (let i = 0; i < count; i += 1) {
+      if (env[`GIT_CONFIG_KEY_${i}`] === 'credential.https://github.com.helper') {
+        helperValues.push(env[`GIT_CONFIG_VALUE_${i}`] ?? '')
+      }
+    }
+    expect(helperValues).toEqual(['', '!gh auth git-credential'])
+    expect(env.GIT_AUTHOR_EMAIL).toBe('octo@example.com')
+    expect(env.GIT_COMMITTER_NAME).toBe('Octo Personal')
+    // Merged onto process.env: git-spawn uses options.env as the whole child env.
+    expect(env.PATH).toBe(process.env.PATH)
+    expect(networkGitCalls()).toEqual([])
+  })
+
+  it('unbound repo options carry no env', async () => {
+    const options = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
+      makeBindingStore([{ id: 'bound', path: '/repos/bound' }]),
+      WT,
+      WT
+    )
+    expect(options).toEqual({})
+    expect('env' in options).toBe(false)
+    expect(resolveGhAccountTokenMock).not.toHaveBeenCalled()
+    expect(gitExecFileAsyncMock).not.toHaveBeenCalled()
+  })
+
+  it('unresolvable binding rejects before git runs', async () => {
+    resolveGhAccountTokenMock.mockRejectedValue(new Error('no token'))
+    await expect(
+      getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
+        makeBindingStore([boundRepo]),
+        WT,
+        WT
+      )
+    ).rejects.toThrow(
+      'GitHub account octo-personal@github.com is not available: GitHub account octo-personal@github.com is not signed in to gh on this machine. Fix: gh auth login --hostname github.com'
+    )
+    expect(networkGitCalls()).toEqual([])
   })
 })

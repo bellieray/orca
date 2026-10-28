@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { commitChanges } from '../../git/status'
 import { resolveRegisteredWorktreePath } from '../registered-worktree-roots-cache'
-import { getLocalGitOptionsForRegisteredWorktree } from '../local-worktree-runtime-options'
+import { getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts } from '../local-worktree-runtime-options'
 import type { FilesystemHandlerContext } from './filesystem-handler-context'
 import { requireReachableGitRoute } from '../../providers/execution-host-provider-dispatch'
 import { getConnectionExecutionHostId } from '../../../shared/execution-host'
@@ -20,7 +20,7 @@ export function registerFilesystemGitCommitHandlers(context: FilesystemHandlerCo
       }
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath

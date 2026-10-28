@@ -24,6 +24,27 @@ describe('git remote operations', () => {
     clearGitCapabilityStateForTests()
   })
 
+  it('forwards a bound account env to push and fetch, and adds none when unbound', async () => {
+    gitExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
+    gitExecFileAsyncMock.mockRejectedValueOnce(Object.assign(new Error('no branch'), { code: 1 }))
+    const env = { PATH: '/usr/bin', GH_TOKEN: 'gho_bound' }
+
+    await gitPush('/repo', true, undefined, { env })
+    expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(
+      ['push', '--set-upstream', 'origin', 'HEAD'],
+      { cwd: '/repo', env }
+    )
+
+    await gitFetch('/repo', undefined, { env })
+    expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(['fetch', '--prune'], {
+      cwd: '/repo',
+      env
+    })
+
+    await gitFetch('/repo')
+    expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(['fetch', '--prune'], { cwd: '/repo' })
+  })
+
   it('pushes to origin when no upstream is configured', async () => {
     gitExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
     gitExecFileAsyncMock.mockRejectedValueOnce(Object.assign(new Error('no branch'), { code: 1 }))

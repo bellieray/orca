@@ -10,7 +10,10 @@ import { gitSyncForkDefaultBranch } from '../../../git/fork-sync'
 import { getUpstreamStatus } from '../../../git/upstream'
 import { validateGitPushTarget } from '../../../git/push-target-validation'
 import { resolveRegisteredWorktreePath } from '../../registered-worktree-roots-cache'
-import { getLocalGitOptionsForRegisteredWorktree } from '../../local-worktree-runtime-options'
+import {
+  getLocalGitOptionsForRegisteredWorktree,
+  getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts
+} from '../../local-worktree-runtime-options'
 import { validateGitForkSyncExpectedUpstream } from '../../../../shared/git-fork-sync'
 import { ipcGitWorktreeTarget, materializeWorktreePushTargetRemote } from '../../worktree-remote'
 import type { FilesystemHandlerContext } from '../filesystem-handler-context'
@@ -54,7 +57,7 @@ export function registerGitRemoteSyncHandlers(context: FilesystemHandlerContext)
     ): Promise<void> => {
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath
@@ -97,7 +100,7 @@ export function registerGitRemoteSyncHandlers(context: FilesystemHandlerContext)
       })
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath

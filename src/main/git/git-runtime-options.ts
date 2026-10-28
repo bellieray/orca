@@ -4,17 +4,26 @@ export type GitRuntimeOptions = {
   wslDistro?: string
   signal?: AbortSignal
   admissionTier?: GitAdmissionTier
+  /** Full child env (already merged onto process.env); absent keeps the inherited env untouched. */
+  env?: NodeJS.ProcessEnv
 }
 
 export function gitOptionsForWorktree(
   cwd: string,
   options: GitRuntimeOptions = {}
-): { cwd: string; wslDistro?: string; signal?: AbortSignal; admissionTier?: GitAdmissionTier } {
+): {
+  cwd: string
+  wslDistro?: string
+  signal?: AbortSignal
+  admissionTier?: GitAdmissionTier
+  env?: NodeJS.ProcessEnv
+} {
   return {
     cwd,
     ...(options.wslDistro ? { wslDistro: options.wslDistro } : {}),
     ...(options.signal ? { signal: options.signal } : {}),
-    ...(options.admissionTier ? { admissionTier: options.admissionTier } : {})
+    ...(options.admissionTier ? { admissionTier: options.admissionTier } : {}),
+    ...(options.env ? { env: options.env } : {})
   }
 }
 
@@ -27,6 +36,7 @@ export function gitReadOptionsForWorktree(
   wslDistro?: string
   signal?: AbortSignal
   admissionTier?: GitAdmissionTier
+  env?: NodeJS.ProcessEnv
   preferWslDirectGit: true
 } {
   return { ...gitOptionsForWorktree(cwd, options), preferWslDirectGit: true }

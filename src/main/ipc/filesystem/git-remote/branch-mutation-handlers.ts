@@ -3,7 +3,7 @@ import type { GitPushTarget } from '../../../../shared/worktree/types'
 import { gitFastForward, gitPull, gitPullRebaseFromBase, gitPush } from '../../../git/remote'
 import { validateGitPushTarget } from '../../../git/push-target-validation'
 import { resolveRegisteredWorktreePath } from '../../registered-worktree-roots-cache'
-import { getLocalGitOptionsForRegisteredWorktree } from '../../local-worktree-runtime-options'
+import { getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts } from '../../local-worktree-runtime-options'
 import { ipcGitWorktreeTarget, materializeWorktreePushTargetRemote } from '../../worktree-remote'
 import type { FilesystemHandlerContext } from '../filesystem-handler-context'
 import { requireReachableGitRoute } from '../../../providers/execution-host-provider-dispatch'
@@ -29,7 +29,7 @@ export function registerGitRemoteBranchMutationHandlers(context: FilesystemHandl
       const publish = args.publish === true
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath
@@ -71,7 +71,7 @@ export function registerGitRemoteBranchMutationHandlers(context: FilesystemHandl
     ): Promise<void> => {
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath
@@ -112,7 +112,7 @@ export function registerGitRemoteBranchMutationHandlers(context: FilesystemHandl
     ): Promise<void> => {
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath
@@ -148,7 +148,7 @@ export function registerGitRemoteBranchMutationHandlers(context: FilesystemHandl
     ): Promise<void> => {
       requireReachableGitRoute(getConnectionExecutionHostId(args.connectionId))
       const worktreePath = await resolveRegisteredWorktreePath(args.worktreePath, store)
-      const gitOptions = getLocalGitOptionsForRegisteredWorktree(
+      const gitOptions = await getLocalGitOptionsForRegisteredWorktreeWithConnectedAccounts(
         store,
         args.worktreePath,
         worktreePath
